@@ -105,6 +105,50 @@ def load_following_from_export(following_file: Path) -> Set[str]:
     
     return following_set
 
+def load_followers_following_from_ids(ids_file: Path) -> Tuple[Set[str], Set[str], Dict[str, str]]:
+    """Load followers and following from a consolidated ids.json file.
+    Expects a JSON with keys: 'followers' and 'following', each a list of
+    objects containing at least 'username' and 'id'.
+    Returns two sets of usernames.
+    """
+    followers_set: Set[str] = set()
+    following_set: Set[str] = set()
+    username_id_map: Dict[str, str] = {}
+
+    if not ids_file.exists():
+        print(f"  ✗ ids.json not found at: {ids_file}")
+        return followers_set, following_set, username_id_map
+
+    try:
+        with open(ids_file, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+
+        followers = data.get('followers', [])
+        following = data.get('following', [])
+
+        for item in followers:
+            username = item.get('username')
+            uid = item.get('id')
+            if username:
+                followers_set.add(username)
+                if uid:
+                    username_id_map[username] = str(uid)
+
+        for item in following:
+            username = item.get('username')
+            uid = item.get('id')
+            if username:
+                following_set.add(username)
+                if uid:
+                    username_id_map[username] = str(uid)
+
+        print(f"  ✓ Loaded {len(followers_set)} followers from ids.json")
+        print(f"  ✓ Loaded {len(following_set)} following from ids.json")
+    except Exception as e:
+        print(f"  ✗ Error loading ids.json: {e}")
+
+    return followers_set, following_set, username_id_map
+
 # ======================== METADATA MANAGEMENT ========================
 
 def load_metadata(metadata_file: Path, username: str) -> Dict:
@@ -142,6 +186,8 @@ def normalize_metadata_keys(data: Dict) -> Dict:
         merged.setdefault("error", None)
         merged.setdefault("is_follower", False)
         merged.setdefault("is_following", False)
+        merged.setdefault("r2_upload_status", None)
+        merged.setdefault("r2_error", None)
 
         # Preserve prior state if already present
         if new_key in normalized:
@@ -159,6 +205,8 @@ def normalize_metadata_keys(data: Dict) -> Dict:
 
 def save_metadata(metadata: Dict, metadata_file: Path):
     """Atomically save metadata to JSON with a backup"""
+    # Normalize keys to prefer instagram_id and collapse duplicates
+    metadata = normalize_metadata_keys(metadata)
     metadata["last_updated"] = datetime.now().isoformat()
     tmp_path = metadata_file.with_suffix(metadata_file.suffix + ".tmp")
     bak_path = metadata_file.with_suffix(metadata_file.suffix + ".bak")
@@ -363,7 +411,8 @@ def collect_profile_metadata(
     download_images: bool = True,
     upload_to_r2_enabled: bool = False,
     generate_html: bool = False,
-    html_output_dir: Optional[Path] = None
+    html_output_dir: Optional[Path] = None,
+    username_id_map: Optional[Dict[str, str]] = None
 ) -> bool:
     """
     Collect metadata and optionally download profile picture for a single user.
@@ -400,7 +449,7 @@ def collect_profile_metadata(
     else:
         # Create new record
         record = {
-            "instagram_id": None,
+            "instagram_id": (username_id_map.get(username) if username_id_map else None),
             "username": username,
             "full_name": None,
             "biography": None,
@@ -412,6 +461,9 @@ def collect_profile_metadata(
             "profile_pic_url": None,
             "local_path": None,
             "image_hash": None,
+            "original_image_r2_key": None,
+            "r2_upload_status": None,
+            "r2_error": None,
             "processed": False,
             "status": "pending",
             "error": None,
@@ -421,10 +473,10 @@ def collect_profile_metadata(
             "method": method.value
         }
     
-    # Mark as processing
+    # Mark as processing; write under a stable initial key
     record["status"] = "processing"
-    record_key = str(record.get("instagram_id") or record.get("username"))
-    metadata["profiles"][record_key] = record
+    initial_key = str(record.get("instagram_id") or record.get("username"))
+    metadata["profiles"][initial_key] = record
     
     try:
         # Fetch profile data based on method
@@ -483,7 +535,8 @@ def collect_profile_metadata(
         
         elif method == DownloadMethod.GRAPHQL:
             # Get user ID first, then use GraphQL
-            result = fetch_profile_with_graphql(username=username, return_raw=generate_html)
+            user_id = username_id_map.get(username) if username_id_map else None
+            result = fetch_profile_with_graphql(username=username, user_id=user_id, return_raw=generate_html)
             
             if "error" not in result and download_images and result.get("profile_pic_url"):
                 # Download the profile picture
@@ -504,17 +557,28 @@ def collect_profile_metadata(
         if "error" in result:
             raise Exception(result["error"])
         
-        # Upload to R2 if enabled and we have image bytes
+        # Upload to R2 if enabled
         r2_key = None
         if upload_to_r2_enabled and result.get("image_bytes"):
             instagram_id = result.get("instagram_id") or username
             r2_key = upload_to_r2(result["image_bytes"], instagram_id, "original")
             if r2_key:
                 print(f"  ☁️  Uploaded to R2: {r2_key}")
+                record["r2_upload_status"] = "uploaded"
+                record["r2_error"] = None
+            else:
+                record["r2_upload_status"] = "failed"
+                record["r2_error"] = record.get("r2_error") or "Upload failed or credentials missing"
+        elif upload_to_r2_enabled and not result.get("image_bytes"):
+            record["r2_upload_status"] = "skipped"
+            record["r2_error"] = "No image bytes available"
+        else:
+            record["r2_upload_status"] = "disabled"
+            record["r2_error"] = None
         
         # Update record with fetched data
         record.update({
-            "instagram_id": result.get("instagram_id"),
+            "instagram_id": result.get("instagram_id") or (username_id_map.get(username) if username_id_map else None),
             "full_name": result.get("full_name"),
             "biography": result.get("biography"),
             "is_verified": result.get("is_verified"),
@@ -550,8 +614,13 @@ def collect_profile_metadata(
             except Exception as e:
                 print(f"  ⚠ Failed to generate HTML: {e}")
         
-        # Update metadata with final key
+        # Update metadata with final key, removing temporary key if changed
         final_key = str(record.get("instagram_id") or username)
+        if final_key != initial_key and initial_key in metadata["profiles"]:
+            try:
+                del metadata["profiles"][initial_key]
+            except Exception:
+                pass
         metadata["profiles"][final_key] = record
         
         print(f"  ✓ Completed: {record.get('full_name', username)} (@{username})")
@@ -564,6 +633,11 @@ def collect_profile_metadata(
         record["last_processed_at"] = datetime.now().isoformat()
         
         final_key = str(record.get("instagram_id") or username)
+        if final_key != initial_key and initial_key in metadata["profiles"]:
+            try:
+                del metadata["profiles"][initial_key]
+            except Exception:
+                pass
         metadata["profiles"][final_key] = record
         
         print(f"  ✗ Failed: {e}")
@@ -581,7 +655,8 @@ def process_profiles_batch(
     upload_to_r2_enabled: bool = False,
     generate_html: bool = False,
     html_output_dir: Optional[Path] = None,
-    delay_range: Tuple[float, float] = (2, 5)
+    delay_range: Tuple[float, float] = (2, 5),
+    username_id_map: Optional[Dict[str, str]] = None
 ) -> Tuple[int, int]:
     """
     Process a batch of profiles with rate limiting.
@@ -605,7 +680,8 @@ def process_profiles_batch(
             download_images=download_images,
             upload_to_r2_enabled=upload_to_r2_enabled,
             generate_html=generate_html,
-            html_output_dir=html_output_dir
+            html_output_dir=html_output_dir,
+            username_id_map=username_id_map
         )
         
         if success:
@@ -625,81 +701,6 @@ def process_profiles_batch(
 
 # ======================== EXPERIMENTAL: LOW-REQUEST FOLLOWER/FOLLOWING PROPAGATION ========================
 
-def propagate_followers_following_with_ids(
-    metadata: Dict,
-    metadata_file: Path
-) -> Dict[str, str]:
-    """
-    Experimental: Use the collected usernames and IDs to build a mapping.
-    This doesn't fetch new data but organizes existing data for later use.
-    
-    Returns:
-        Dictionary mapping usernames to instagram_ids
-    """
-    username_to_id = {}
-    
-    for key, record in metadata.get("profiles", {}).items():
-        username = record.get("username")
-        instagram_id = record.get("instagram_id")
-        
-        if username and instagram_id:
-            username_to_id[username] = str(instagram_id)
-    
-    print(f"\n📊 Propagated {len(username_to_id)} username→ID mappings")
-    return username_to_id
-
-def fetch_followers_following_with_ids(username: str, fetch_type: str = "both") -> Dict[str, List[Dict]]:
-    """
-    Fetch followers and/or following lists with user IDs using Instaloader.
-    
-    Args:
-        username: Instagram username to fetch data for
-        fetch_type: "followers", "following", or "both"
-    
-    Returns:
-        Dictionary with 'followers' and/or 'following' lists containing dicts with username and userid
-    """
-    result = {"followers": [], "following": []}
-    
-    try:
-        loader = instaloader.Instaloader()
-        profile = instaloader.Profile.from_username(loader.context, username)
-        
-        if fetch_type in ["followers", "both"]:
-            print(f"\n📥 Fetching followers with IDs for @{username}...")
-            try:
-                for follower in profile.get_followers():
-                    result["followers"].append({
-                        "username": follower.username,
-                        "userid": str(follower.userid),
-                        "full_name": follower.full_name
-                    })
-                    if len(result["followers"]) % 100 == 0:
-                        print(f"  Fetched {len(result['followers'])} followers...")
-                print(f"  ✓ Total followers: {len(result['followers'])}")
-            except Exception as e:
-                print(f"  ✗ Error fetching followers: {e}")
-        
-        if fetch_type in ["following", "both"]:
-            print(f"\n📤 Fetching following with IDs for @{username}...")
-            try:
-                for followee in profile.get_followees():
-                    result["following"].append({
-                        "username": followee.username,
-                        "userid": str(followee.userid),
-                        "full_name": followee.full_name
-                    })
-                    if len(result["following"]) % 100 == 0:
-                        print(f"  Fetched {len(result['following'])} following...")
-                print(f"  ✓ Total following: {len(result['following'])}")
-            except Exception as e:
-                print(f"  ✗ Error fetching following: {e}")
-        
-        return result
-        
-    except Exception as e:
-        print(f"✗ Error: {e}")
-        return result
 
 # ======================== R2 STORAGE FUNCTIONALITY ========================
 
@@ -717,13 +718,18 @@ def upload_to_r2(image_bytes: bytes, instagram_id: str, file_type: str = "origin
     """
     try:
         # Load R2 credentials from environment
-        r2_endpoint = os.getenv('R2_ENDPOINT_URL')
-        r2_access_key = os.getenv('R2_ACCESS_KEY_ID')
-        r2_secret_key = os.getenv('R2_SECRET_ACCESS_KEY')
-        r2_bucket = os.getenv('R2_BUCKET_NAME', 'instagram-profiles')
-        
+        # Support both long and short env var names
+        r2_endpoint = os.getenv('R2_ENDPOINT_URL') or os.getenv('R2_ENDPOINT')
+        r2_access_key = os.getenv('R2_ACCESS_KEY_ID') or os.getenv('R2_ACCESS_KEY')
+        r2_secret_key = os.getenv('R2_SECRET_ACCESS_KEY') or os.getenv('R2_SECRET_KEY')
+        r2_bucket = os.getenv('R2_BUCKET_NAME') or os.getenv('R2_BUCKET') or 'instagram-profiles'
+
         if not all([r2_endpoint, r2_access_key, r2_secret_key]):
-            print("  ⚠️  R2 credentials not configured in .env")
+            missing = []
+            if not r2_endpoint: missing.append('R2_ENDPOINT_URL/R2_ENDPOINT')
+            if not r2_access_key: missing.append('R2_ACCESS_KEY_ID/R2_ACCESS_KEY')
+            if not r2_secret_key: missing.append('R2_SECRET_ACCESS_KEY/R2_SECRET_KEY')
+            print(f"  ⚠️  R2 credentials missing: {', '.join(missing)}")
             return None
         
         # Initialize S3 client for R2
@@ -1163,18 +1169,10 @@ Examples:
     )
     
     parser.add_argument(
-        '--fetch-ids',
-        type=str,
-        choices=['followers', 'following', 'both'],
-        default=None,
-        help='Fetch followers/following with user IDs (requires --target-user)'
-    )
-    
-    parser.add_argument(
-        '--target-user',
+        '--ids-file',
         type=str,
         default=None,
-        help='Target user for fetching followers/following with IDs'
+        help='Path to ids.json containing followers and following with IDs (default: ./data/ids.json)'
     )
     
     return parser.parse_args()
@@ -1183,13 +1181,14 @@ Examples:
 
 def main():
     """Main entry point"""
-    load_dotenv()
-    
+    # Setup directories and load .env from project folder explicitly
+    base_dir = Path(__file__).parent
+    load_dotenv(dotenv_path=base_dir / '.env', override=True)
+
     # Parse CLI arguments
     args = parse_arguments()
     
     # Setup directories
-    base_dir = Path(__file__).parent
     data_dir = base_dir / "data"
     output_dir = Path(args.output_dir) if args.output_dir else base_dir / "profile_photos"
     output_dir.mkdir(exist_ok=True)
@@ -1199,32 +1198,6 @@ def main():
         html_output_dir.mkdir(exist_ok=True)
     
     metadata_file = data_dir / "profiles_metadata.json"
-    
-    # Handle fetch-ids mode separately
-    if args.fetch_ids:
-        target_user = args.target_user or args.username
-        print("=" * 70)
-        print("Fetching Followers/Following with User IDs")
-        print("=" * 70)
-        print(f"Target User: @{target_user}")
-        print(f"Fetch Type: {args.fetch_ids}")
-        print("=" * 70)
-        
-        result = fetch_followers_following_with_ids(target_user, args.fetch_ids)
-        
-        # Save to JSON file
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_file = data_dir / f"followers_following_ids_{target_user}_{timestamp}.json"
-        
-        with open(output_file, 'w', encoding='utf-8') as f:
-            json.dump(result, f, indent=2, ensure_ascii=False)
-        
-        print(f"\n💾 Saved to: {output_file}")
-        print("\n📊 Summary:")
-        print(f"  Followers: {len(result['followers'])}")
-        print(f"  Following: {len(result['following'])}")
-        
-        return 0
     
     # Print banner
     print("=" * 70)
@@ -1241,17 +1214,14 @@ def main():
     print(f"Delay Range: {args.delay[0]}-{args.delay[1]}s")
     print("=" * 70)
     
-    # Load export files
-    print("\n📂 Loading followers and following from exported files...")
-    followers_file = data_dir / "followers_1.json"
-    following_file = data_dir / "following.json"
-    
-    followers_set = load_followers_from_export(followers_file)
-    following_set = load_following_from_export(following_file)
+    # Load followers/following from ids.json
+    ids_path = Path(args.ids_file) if args.ids_file else data_dir / "ids.json"
+    print("\n📂 Loading followers and following from ids.json...")
+    followers_set, following_set, username_id_map = load_followers_following_from_ids(ids_path)
     
     if not followers_set and not following_set:
-        print("\n✗ No followers/following data found")
-        print("Make sure you have exported followers_1.json and following.json from Instagram")
+        print("\n✗ No followers/following data found in ids.json")
+        print("Ensure ids.json exists with 'followers' and 'following' arrays.")
         return 1
     
     # Load metadata
@@ -1309,12 +1279,9 @@ def main():
             upload_to_r2_enabled=args.upload_r2,
             generate_html=args.test_html,
             html_output_dir=html_output_dir if args.test_html else None,
-            delay_range=tuple(args.delay)
+            delay_range=tuple(args.delay),
+            username_id_map=username_id_map
         )
-        
-        # Experimental: Propagate username→ID mappings
-        print("\n🔬 Experimental: Propagating username→ID mappings...")
-        username_to_id = propagate_followers_following_with_ids(metadata, metadata_file)
         
         # Save final metadata
         save_metadata(metadata, metadata_file)
@@ -1332,7 +1299,18 @@ def main():
         if args.test_html:
             print(f"📄 HTML reports saved to: {html_output_dir}")
         if args.upload_r2:
-            print(f"☁️  Images uploaded to R2")
+            # Compute how many uploads actually succeeded
+            uploaded_count = 0
+            for uname in target_usernames_list:
+                key = find_record_key_by_username(metadata, uname)
+                if key:
+                    rec = metadata["profiles"].get(key, {})
+                    if rec.get("original_image_r2_key"):
+                        uploaded_count += 1
+            if uploaded_count > 0:
+                print(f"☁️  Images uploaded to R2: {uploaded_count}")
+            else:
+                print(f"☁️  No images uploaded to R2")
         print("=" * 70)
         
         return 0

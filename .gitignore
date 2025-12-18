@@ -48,12 +48,12 @@ env/
 # Data Files (Instagram exports and collected data)
 instagram_downloader/data/followers_1.json
 instagram_downloader/data/following.json
-instagram_downloader/data/profiles_metadata.json
 instagram_downloader/data/profiles_metadata.json.bak
 instagram_downloader/data/profiles_metadata.json.tmp
 instagram_downloader/data/storage_state.json
 instagram_downloader/data/followers_following_ids_*.json
 instagram_downloader/data/sessions/
+instagram_downloader/data/sessions/*
 
 # Downloaded Profile Photos
 instagram_downloader/profile_photos/
