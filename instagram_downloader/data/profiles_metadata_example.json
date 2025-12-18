@@ -1,0 +1,27 @@
+{
+  "last_updated": "2025-12-18T10:30:00",
+  "owner_username": "wesleykamau",
+  "profiles": {
+    "123456789": {
+      "instagram_id": "123456789",
+      "username": "example_user",
+      "full_name": "Example User Name",
+      "biography": "This is an example biography",
+      "is_verified": false,
+      "is_private": false,
+      "follower_count": 1234,
+      "following_count": 567,
+      "post_count": 89,
+      "profile_pic_url": "https://example.com/profile.jpg",
+      "profile_pic_hash": null,
+      "processed": false,
+      "status": "pending",
+      "is_follower": true,
+      "is_following": false,
+      "error": null,
+      "output_r2_key": null,
+      "model_version": null,
+      "inference_timestamp": null
+    }
+  }
+}
