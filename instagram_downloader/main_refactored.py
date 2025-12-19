@@ -412,7 +412,8 @@ def collect_profile_metadata(
     upload_to_r2_enabled: bool = False,
     generate_html: bool = False,
     html_output_dir: Optional[Path] = None,
-    username_id_map: Optional[Dict[str, str]] = None
+    username_id_map: Optional[Dict[str, str]] = None,
+    intra_delay: float = 0.0
 ) -> bool:
     """
     Collect metadata and optionally download profile picture for a single user.
@@ -541,6 +542,8 @@ def collect_profile_metadata(
             if "error" not in result and download_images and result.get("profile_pic_url"):
                 # Download the profile picture
                 try:
+                    if intra_delay and intra_delay > 0:
+                        time.sleep(intra_delay)
                     image_bytes, image_hash, local_path = download_profile_picture(
                         result["profile_pic_url"], username, output_dir
                     )
@@ -656,7 +659,8 @@ def process_profiles_batch(
     generate_html: bool = False,
     html_output_dir: Optional[Path] = None,
     delay_range: Tuple[float, float] = (2, 5),
-    username_id_map: Optional[Dict[str, str]] = None
+    username_id_map: Optional[Dict[str, str]] = None,
+    intra_delay: float = 0.0
 ) -> Tuple[int, int]:
     """
     Process a batch of profiles with rate limiting.
@@ -681,7 +685,8 @@ def process_profiles_batch(
             upload_to_r2_enabled=upload_to_r2_enabled,
             generate_html=generate_html,
             html_output_dir=html_output_dir,
-            username_id_map=username_id_map
+            username_id_map=username_id_map,
+            intra_delay=intra_delay
         )
         
         if success:
@@ -1133,6 +1138,13 @@ Examples:
         metavar=('MIN', 'MAX'),
         help='Delay range between requests in seconds (default: 2 5)'
     )
+
+    parser.add_argument(
+        '--intra-delay',
+        type=float,
+        default=0.0,
+        help='Additional delay (seconds) inserted between API fetch and image download'
+    )
     
     parser.add_argument(
         '--username',
@@ -1174,6 +1186,12 @@ Examples:
         default=None,
         help='Path to ids.json containing followers and following with IDs (default: ./data/ids.json)'
     )
+
+    parser.add_argument(
+        '--clear-metadata',
+        action='store_true',
+        help='Clear profiles_metadata.json (prompts for confirmation)'
+    )
     
     return parser.parse_args()
 
@@ -1198,6 +1216,30 @@ def main():
         html_output_dir.mkdir(exist_ok=True)
     
     metadata_file = data_dir / "profiles_metadata.json"
+    # Optional: clear metadata with confirmation
+    if args.clear_metadata:
+        print("\n⚠️  You are about to clear all saved profile metadata.")
+        print(f"File: {metadata_file}")
+        confirm = input('Type "YES" to confirm: ').strip()
+        if confirm == 'YES':
+            try:
+                # Backup existing file with timestamp if it exists
+                if metadata_file.exists():
+                    ts = datetime.now().strftime('%Y%m%d_%H%M%S')
+                    bak_path = metadata_file.with_name(f"profiles_metadata_{ts}.bak.json")
+                    with open(metadata_file, 'r', encoding='utf-8') as src, open(bak_path, 'w', encoding='utf-8') as dst:
+                        dst.write(src.read())
+                    print(f"  🗄️  Backup saved to: {bak_path}")
+                # Write a fresh, empty metadata file
+                fresh = {"last_updated": None, "owner_username": args.username, "profiles": {}}
+                save_metadata(fresh, metadata_file)
+                print("  ✓ Metadata cleared.")
+            except Exception as e:
+                print(f"  ✗ Failed to clear metadata: {e}")
+                return 1
+        else:
+            print("  ⊙ Clear cancelled.")
+
     
     # Print banner
     print("=" * 70)
@@ -1212,6 +1254,7 @@ def main():
     print(f"Generate HTML: {args.test_html}")
     print(f"Skip Existing: {args.skip_existing}")
     print(f"Delay Range: {args.delay[0]}-{args.delay[1]}s")
+    print(f"Intra Delay: {args.intra_delay}s")
     print("=" * 70)
     
     # Load followers/following from ids.json
@@ -1280,7 +1323,8 @@ def main():
             generate_html=args.test_html,
             html_output_dir=html_output_dir if args.test_html else None,
             delay_range=tuple(args.delay),
-            username_id_map=username_id_map
+            username_id_map=username_id_map,
+            intra_delay=float(args.intra_delay)
         )
         
         # Save final metadata
