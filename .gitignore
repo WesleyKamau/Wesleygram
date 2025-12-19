@@ -83,3 +83,5 @@ instagram_downloader/playwright_downloader.py
 *.pem
 *.key
 credentials.json
+
+LoRA Photos/

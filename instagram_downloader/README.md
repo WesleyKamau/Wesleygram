@@ -298,7 +298,14 @@ MIT
  ```
  
 `status` tracks state (`pending`, `processing`, `completed`, `failed`, `skipped`); `is_follower` / `is_following` record the relationship source(s). The other fields are preserved on reruns so you can resume downstream pipelines safely.
-```bash
+
+## Credits
+
+This project was originally inspired by and builds upon the work from:
+
+- **[instagram-pfp-downloader](https://github.com/edizbaha/instagram-pfp-downloader)** by edizbaha  
+  A foundation for profile picture extraction and automation concepts.
+
 ## License
 
 MIT
