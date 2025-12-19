@@ -41,9 +41,9 @@ env/
 *~
 .DS_Store
 
-# Jupyter Notebook
-.ipynb_checkpoints
-*.ipynb
+# # Jupyter Notebook
+# .ipynb_checkpoints
+# *.ipynb
 
 # Data Files (Instagram exports and collected data)
 instagram_downloader/data/followers_1.json
