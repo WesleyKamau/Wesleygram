@@ -83,6 +83,7 @@ export function ProfileView({ profile }: ProfileViewProps) {
             alt={profile.username}
             fill
             className="object-cover"
+            unoptimized // External Instagram URLs should not be optimized
           />
         </div>
         <div className="flex flex-col">
