@@ -2,6 +2,7 @@ import { getProfileById } from '@/lib/profiles';
 import { ProfileView } from '@/components/ProfileView';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
+import { PageTransition } from '@/components/PageTransition';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 
@@ -33,11 +34,13 @@ export default async function ProfilePage({ params }: PageProps) {
   }
 
   return (
-    <div className="flex h-svh flex-col bg-background text-foreground">
-      <Header />
-      <main className="flex flex-1 flex-col items-center justify-center px-4 py-4 sm:py-8 overflow-y-auto">
-        <ProfileView profile={profile} />
-      </main>
-    </div>
+    <PageTransition>
+      <div className="flex h-svh flex-col bg-background text-foreground">
+        <Header />
+        <main className="flex flex-1 flex-col items-center justify-center px-4 py-4 sm:py-8 overflow-y-auto">
+          <ProfileView profile={profile} />
+        </main>
+      </div>
+    </PageTransition>
   );
 }

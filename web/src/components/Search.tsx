@@ -77,7 +77,7 @@ export function Search({ profiles }: SearchProps) {
   };
 
   return (
-    <div className="relative w-full max-w-md">
+    <div className="relative w-full">
       <div className="relative">
         <SearchIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
         <input
@@ -91,7 +91,7 @@ export function Search({ profiles }: SearchProps) {
       </div>
 
       {isOpen && results.length > 0 && (
-        <div className="absolute top-full mt-2 w-full overflow-hidden rounded-lg bg-white shadow-lg ring-1 ring-black/5 dark:bg-neutral-900 dark:ring-white/10">
+        <div className="absolute top-full left-0 right-0 mt-2 max-h-96 overflow-y-auto rounded-lg bg-white shadow-lg ring-1 ring-black/5 dark:bg-neutral-900 dark:ring-white/10">
           {results.map((profile) => (
             <button
               key={profile.instagram_id}
