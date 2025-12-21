@@ -178,28 +178,28 @@ export function ProfileView({ profile }: ProfileViewProps) {
         )}
       </div>
 
-      <div className="flex gap-3 sm:gap-4 shrink-0">
+      <div className="flex gap-4 sm:gap-5 shrink-0">
         <button
           onClick={handleDownload}
-          className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-blue-600 py-2.5 sm:py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-700"
+          className="flex flex-1 items-center justify-center gap-2.5 sm:gap-3 rounded-lg bg-blue-600 py-3.5 sm:py-4 text-base font-semibold text-white transition-colors hover:bg-blue-700"
         >
-          <Download className="h-4 w-4" />
+          <Download className="h-5 w-5" />
           Download
         </button>
         {hasProcessed && (
           <button
             onClick={() => setShowOriginal(!showOriginal)}
-            className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-neutral-200 py-2.5 sm:py-3 text-sm font-semibold text-foreground transition-colors hover:bg-neutral-300 dark:bg-neutral-800 dark:text-white dark:hover:bg-neutral-700"
+            className="flex flex-1 items-center justify-center gap-2.5 sm:gap-3 rounded-lg bg-neutral-200 py-3.5 sm:py-4 text-base font-semibold text-foreground transition-colors hover:bg-neutral-300 dark:bg-neutral-800 dark:text-white dark:hover:bg-neutral-700"
           >
-            <Eye className="h-4 w-4" />
+            <Eye className="h-5 w-5" />
             {showOriginal ? 'Show Wesley-ified' : 'Show Original'}
           </button>
         )}
       </div>
 
-      <div className="rounded-lg bg-neutral-50 p-3 sm:p-4 dark:bg-neutral-900 shrink-0 max-h-24 sm:max-h-none overflow-y-auto">
-        <h3 className="mb-1 sm:mb-2 text-xs sm:text-sm font-semibold text-neutral-500 dark:text-neutral-400">Bio</h3>
-        <p className="whitespace-pre-wrap text-xs sm:text-sm text-foreground">
+      <div className="rounded-lg bg-neutral-50 p-3.5 sm:p-4 dark:bg-neutral-900 shrink-0 overflow-visible">
+        <h3 className="mb-1 sm:mb-2 text-sm sm:text-base font-semibold text-neutral-500 dark:text-neutral-400">Bio</h3>
+        <p className="whitespace-pre-wrap text-sm sm:text-base text-foreground leading-relaxed">
           {profile.biography || 'No biography.'}
         </p>
       </div>
