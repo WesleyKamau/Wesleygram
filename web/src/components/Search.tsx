@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Search as SearchIcon } from 'lucide-react';
-import { Profile, getImageUrl } from '../lib/profiles';
-import { PROFILE_PREVIEW_SIZE } from '../lib/constants';
+import { Profile, getImageUrl } from '@/lib/profiles';
+import { PROFILE_PREVIEW_SIZE } from '@/lib/constants';
 
 interface SearchProps {
   profiles: Profile[];
