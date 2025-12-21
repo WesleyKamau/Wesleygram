@@ -186,8 +186,13 @@ def normalize_metadata_keys(data: Dict) -> Dict:
         merged.setdefault("error", None)
         merged.setdefault("is_follower", False)
         merged.setdefault("is_following", False)
-        merged.setdefault("r2_upload_status", None)
-        merged.setdefault("r2_error", None)
+        merged.setdefault("r2_original_upload_status", None)
+        merged.setdefault("r2_original_error", None)
+        # v1 processing fields
+        merged.setdefault("has_people", None)
+        merged.setdefault("v1_image_r2_key", None)
+        merged.setdefault("v1_error", None)
+        merged.setdefault("v1_processed_at", None)
 
         # Preserve prior state if already present
         if new_key in normalized:
@@ -463,15 +468,20 @@ def collect_profile_metadata(
             "local_path": None,
             "image_hash": None,
             "original_image_r2_key": None,
-            "r2_upload_status": None,
-            "r2_error": None,
+            "r2_original_upload_status": None,
+            "r2_original_error": None,
             "processed": False,
             "status": "pending",
             "error": None,
             "last_processed_at": None,
             "is_follower": is_follower,
             "is_following": is_following,
-            "method": method.value
+            "method": method.value,
+            # v1 processing fields
+            "has_people": None,
+            "v1_image_r2_key": None,
+            "v1_error": None,
+            "v1_processed_at": None
         }
     
     # Mark as processing; write under a stable initial key
@@ -567,17 +577,17 @@ def collect_profile_metadata(
             r2_key = upload_to_r2(result["image_bytes"], instagram_id, "original")
             if r2_key:
                 print(f"  ☁️  Uploaded to R2: {r2_key}")
-                record["r2_upload_status"] = "uploaded"
-                record["r2_error"] = None
+                record["r2_original_upload_status"] = "uploaded"
+                record["r2_original_error"] = None
             else:
-                record["r2_upload_status"] = "failed"
-                record["r2_error"] = record.get("r2_error") or "Upload failed or credentials missing"
+                record["r2_original_upload_status"] = "failed"
+                record["r2_original_error"] = record.get("r2_original_error") or "Upload failed or credentials missing"
         elif upload_to_r2_enabled and not result.get("image_bytes"):
-            record["r2_upload_status"] = "skipped"
-            record["r2_error"] = "No image bytes available"
+            record["r2_original_upload_status"] = "skipped"
+            record["r2_original_error"] = "No image bytes available"
         else:
-            record["r2_upload_status"] = "disabled"
-            record["r2_error"] = None
+            record["r2_original_upload_status"] = "disabled"
+            record["r2_original_error"] = None
         
         # Update record with fetched data
         record.update({

@@ -18,4 +18,6 @@ missing = [p for p in profiles.values() if not p.get('original_image_r2_key')]
 if missing:
     print(f'\nProfiles without R2 keys:')
     for p in missing:
-        print(f"  - {p.get('username')} (id: {p.get('instagram_id')}, status: {p.get('status')}, r2_status: {p.get('r2_upload_status')})")
+        # Support both old and new field names
+        r2_status = p.get('r2_original_upload_status') or p.get('r2_upload_status')
+        print(f"  - {p.get('username')} (id: {p.get('instagram_id')}, status: {p.get('status')}, r2_status: {r2_status})")
