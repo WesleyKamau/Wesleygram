@@ -3,6 +3,8 @@ import localFont from "next/font/local";
 import "./globals.css";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://wesleygram.com";
+const siteName = "Wesleygram";
+const siteDescription = "Everyone's Wesley.";
 
 const instagramSans = localFont({
   src: [
@@ -31,14 +33,14 @@ const instagramSans = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Wesleygram",
-  description: "Instagram Profile Search",
+  title: siteName,
+  description: siteDescription,
   metadataBase: new URL(siteUrl),
   openGraph: {
-    title: "Wesleygram",
-    description: "Search Instagram profiles quickly and cleanly.",
+    title: siteName,
+    description: siteDescription,
     url: siteUrl,
-    siteName: "Wesleygram",
+    siteName,
     images: [
       {
         url: "/opengraph-image",
@@ -52,8 +54,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Wesleygram",
-    description: "Search Instagram profiles quickly and cleanly.",
+    title: siteName,
+    description: siteDescription,
     images: ["/opengraph-image"],
   },
   viewport: {
