@@ -85,4 +85,7 @@ instagram_downloader/playwright_downloader.py
 *.key
 credentials.json
 
+# Model files
+inference/models/
+
 LoRA Photos/
