@@ -54,7 +54,7 @@ export default async function ProfilePage({ params }: PageProps) {
     <PageTransition>
       <div className="flex h-svh flex-col bg-background text-foreground">
         <Header />
-        <main className="flex flex-1 flex-col items-center justify-center px-4 py-4 sm:py-8 overflow-y-auto">
+        <main className="flex flex-1 flex-col items-center px-4 py-3 sm:py-6 min-h-0">
           <ProfileView profile={profile} />
         </main>
       </div>

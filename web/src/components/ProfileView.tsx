@@ -122,33 +122,33 @@ export function ProfileView({ profile }: ProfileViewProps) {
     : getImageUrl(profile.v1_image_r2_key);
 
   return (
-    <div className="flex w-full max-w-md flex-col gap-3 sm:gap-6">
-      <div className="flex items-center gap-3 sm:gap-4">
-        <div className="relative h-20 w-20 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800">
+    <div className="flex w-full max-w-md flex-col gap-2 sm:gap-4">
+      <div className="flex items-center gap-3 sm:gap-4 shrink-0">
+        <div className="relative h-14 w-14 sm:h-20 sm:w-20 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800">
           <Image
             src={previewImageUrl}
             alt={profile.username}
             fill
             className="object-cover"
-            unoptimized // External Instagram URLs should not be optimized
+            unoptimized
           />
         </div>
         <div className="flex flex-col">
-          <h2 className="text-xl font-bold text-foreground">{profile.username}</h2>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">{profile.full_name}</p>
+          <h2 className="text-lg sm:text-xl font-bold text-foreground">{profile.username}</h2>
+          <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400">{profile.full_name}</p>
         </div>
       </div>
 
       {!hasProcessed && (
-        <div className="flex items-center gap-2 rounded-lg bg-yellow-500/10 p-4 text-yellow-600 dark:text-yellow-500">
-          <AlertTriangle className="h-5 w-5" />
-          <p className="text-sm">
+        <div className="flex items-center gap-2 rounded-lg bg-yellow-500/10 p-3 sm:p-4 text-yellow-600 dark:text-yellow-500 shrink-0">
+          <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5" />
+          <p className="text-xs sm:text-sm">
             This profile has not been processed yet. Showing original photo.
           </p>
         </div>
       )}
 
-      <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-neutral-100 dark:bg-neutral-900">
+      <div className="relative aspect-square w-full max-h-[50svh] sm:max-h-none overflow-hidden rounded-lg bg-neutral-100 dark:bg-neutral-900">
         {/* Stagger transitions to prevent darkening - incoming image fades in before outgoing fades out */}
         <Image
           src={getImageUrl(profile.original_image_r2_key)}
@@ -178,10 +178,10 @@ export function ProfileView({ profile }: ProfileViewProps) {
         )}
       </div>
 
-      <div className="flex gap-4">
+      <div className="flex gap-3 sm:gap-4 shrink-0">
         <button
           onClick={handleDownload}
-          className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-blue-600 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-700"
+          className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-blue-600 py-2.5 sm:py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-700"
         >
           <Download className="h-4 w-4" />
           Download
@@ -189,7 +189,7 @@ export function ProfileView({ profile }: ProfileViewProps) {
         {hasProcessed && (
           <button
             onClick={() => setShowOriginal(!showOriginal)}
-            className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-neutral-200 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-neutral-300 dark:bg-neutral-800 dark:text-white dark:hover:bg-neutral-700"
+            className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-neutral-200 py-2.5 sm:py-3 text-sm font-semibold text-foreground transition-colors hover:bg-neutral-300 dark:bg-neutral-800 dark:text-white dark:hover:bg-neutral-700"
           >
             <Eye className="h-4 w-4" />
             {showOriginal ? 'Show Wesley-ified' : 'Show Original'}
@@ -197,9 +197,9 @@ export function ProfileView({ profile }: ProfileViewProps) {
         )}
       </div>
 
-      <div className="rounded-lg bg-neutral-50 p-4 dark:bg-neutral-900">
-        <h3 className="mb-2 text-sm font-semibold text-neutral-500 dark:text-neutral-400">Bio</h3>
-        <p className="whitespace-pre-wrap text-sm text-foreground">
+      <div className="rounded-lg bg-neutral-50 p-3 sm:p-4 dark:bg-neutral-900 shrink-0 max-h-24 sm:max-h-none overflow-y-auto">
+        <h3 className="mb-1 sm:mb-2 text-xs sm:text-sm font-semibold text-neutral-500 dark:text-neutral-400">Bio</h3>
+        <p className="whitespace-pre-wrap text-xs sm:text-sm text-foreground">
           {profile.biography || 'No biography.'}
         </p>
       </div>
