@@ -103,13 +103,33 @@ export function ProfileView({ profile }: ProfileViewProps) {
       )}
 
       <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-neutral-100 dark:bg-neutral-900">
+        {/* Stagger transitions to prevent darkening - incoming image fades in before outgoing fades out */}
         <Image
-          src={imageUrl}
+          src={getImageUrl(profile.original_image_r2_key)}
           alt={profile.username}
           fill
-          className="object-cover"
-          unoptimized // R2 images might not be optimized by Next.js image optimization without config
+          className={`object-cover transition-all duration-500 ease-in-out ${
+            displayOriginal 
+              ? 'opacity-100 scale-100 blur-0 z-10 delay-0' 
+              : 'opacity-0 scale-105 blur-md z-0 delay-150'
+          }`}
+          unoptimized
+          priority
         />
+        {hasProcessed && (
+          <Image
+            src={getImageUrl(profile.v1_image_r2_key)}
+            alt={profile.username}
+            fill
+            className={`object-cover transition-all duration-500 ease-in-out ${
+              !displayOriginal 
+                ? 'opacity-100 scale-100 blur-0 z-10 delay-0' 
+                : 'opacity-0 scale-105 blur-md z-0 delay-150'
+            }`}
+            unoptimized
+            priority
+          />
+        )}
       </div>
 
       <div className="flex gap-4">
@@ -126,7 +146,7 @@ export function ProfileView({ profile }: ProfileViewProps) {
             className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-neutral-200 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-neutral-300 dark:bg-neutral-800 dark:text-white dark:hover:bg-neutral-700"
           >
             <Eye className="h-4 w-4" />
-            {showOriginal ? 'Show Processed' : 'Show Original'}
+            {showOriginal ? 'Show Wesley-ified' : 'Show Original'}
           </button>
         )}
       </div>
