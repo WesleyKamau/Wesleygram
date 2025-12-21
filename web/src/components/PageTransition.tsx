@@ -2,6 +2,7 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 interface PageTransitionProps {
   children: React.ReactNode;
@@ -9,6 +10,40 @@ interface PageTransitionProps {
 
 export function PageTransition({ children }: PageTransitionProps) {
   const pathname = usePathname();
+  const [shouldAnimate, setShouldAnimate] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      const flag = sessionStorage.getItem('from-search');
+      if (flag) {
+        sessionStorage.removeItem('from-search');
+        return true;
+      }
+    } catch (e) {
+      // ignore
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    // If navigation happens without flag, ensure we don't animate
+    setShouldAnimate((prev) => {
+      if (prev) return true;
+      try {
+        const flag = sessionStorage.getItem('from-search');
+        if (flag) {
+          sessionStorage.removeItem('from-search');
+          return true;
+        }
+      } catch (e) {
+        return false;
+      }
+      return false;
+    });
+  }, [pathname]);
+
+  if (!shouldAnimate) {
+    return <div className="h-full">{children}</div>;
+  }
 
   return (
     <AnimatePresence mode="wait">

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
+import { ToasterClient } from '@/components/ToasterClient';
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://wesleygram.com";
 const siteName = "Wesleygram";
@@ -74,6 +75,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${instagramSans.variable} font-sans antialiased`}>
+        <ToasterClient />
         {children}
       </body>
     </html>

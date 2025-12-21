@@ -133,6 +133,12 @@ export function Search({ profiles }: SearchProps) {
     if (inputRef.current) {
       inputRef.current.blur();
     }
+    // Flag that we navigated from search so the detail page can animate
+    try {
+      sessionStorage.setItem('from-search', '1');
+    } catch (e) {
+      // no-op if storage unavailable
+    }
     // Scroll to top to reset any zoom
     window.scrollTo({ top: 0, behavior: 'smooth' });
     router.push(`/profile/${profile.instagram_id}`);
@@ -170,9 +176,10 @@ export function Search({ profiles }: SearchProps) {
                   <Skeleton
                     height="100%"
                     width="100%"
-                    circle
                     baseColor="#d6d6d6"
                     highlightColor="#e9e9e9"
+                    containerClassName="absolute inset-0 block h-full w-full leading-none"
+                    className="block h-full w-full"
                   />
                 )}
                 <Image

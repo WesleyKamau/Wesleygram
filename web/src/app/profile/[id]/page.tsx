@@ -4,7 +4,7 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { PageTransition } from '@/components/PageTransition';
 import { getPresignedUrl } from '@/lib/r2';
-import { notFound } from 'next/navigation';
+import { redirect } from 'next/navigation';
 import type { Metadata } from 'next';
 
 interface PageProps {
@@ -47,7 +47,7 @@ export default async function ProfilePage({ params }: PageProps) {
   const profile = getProfileById(id);
 
   if (!profile) {
-    notFound();
+    redirect('/?error=user-not-found');
   }
 
   return (
