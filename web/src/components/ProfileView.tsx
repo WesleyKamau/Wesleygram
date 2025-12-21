@@ -21,9 +21,39 @@ export function ProfileView({ profile }: ProfileViewProps) {
       : profile.profile_pic_url
     : getImageUrl(profile.v1_image_r2_key);
 
+  // Log which image is being displayed
+  console.log('[ProfileView] Image display state:', {
+    username: profile.username,
+    hasProcessed,
+    displayOriginal,
+    showOriginal,
+    imageSource: displayOriginal 
+      ? (profile.original_image_r2_key ? 'original_r2' : 'profile_pic_url')
+      : 'processed_r2',
+    imageUrl: imageUrl.substring(0, 100), // Log first 100 chars to avoid sensitive data
+    original_image_r2_key: profile.original_image_r2_key,
+    v1_image_r2_key: profile.v1_image_r2_key,
+  });
+
   const handleDownload = async () => {
     try {
+      console.log('[ProfileView] Starting download for:', {
+        username: profile.username,
+        displayOriginal,
+        imageUrl: imageUrl.substring(0, 100),
+      });
+      
       const response = await fetch(imageUrl);
+      
+      if (!response.ok) {
+        console.error('[ProfileView] Fetch failed with status:', {
+          status: response.status,
+          statusText: response.statusText,
+          url: imageUrl.substring(0, 100),
+        });
+        throw new Error(`Fetch failed: ${response.status} ${response.statusText}`);
+      }
+      
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -33,8 +63,14 @@ export function ProfileView({ profile }: ProfileViewProps) {
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
+      
+      console.log('[ProfileView] Download completed successfully');
     } catch (error) {
-      console.error('Download failed:', error);
+      console.error('[ProfileView] Download failed:', {
+        error: error instanceof Error ? error.message : String(error),
+        username: profile.username,
+        displayOriginal,
+      });
     }
   };
 
