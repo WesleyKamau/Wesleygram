@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Search as SearchIcon } from 'lucide-react';
@@ -15,6 +15,7 @@ export function Search({ profiles }: SearchProps) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Profile[]>([]);
   const [isOpen, setIsOpen] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -64,26 +65,33 @@ export function Search({ profiles }: SearchProps) {
   }, [query, profiles]);
 
   const handleSelect = (profile: Profile) => {
+    // Blur the input to prevent zoom persistence on mobile
+    if (inputRef.current) {
+      inputRef.current.blur();
+    }
+    // Scroll to top to reset any zoom
+    window.scrollTo({ top: 0, behavior: 'smooth' });
     router.push(`/profile/${profile.instagram_id}`);
     setIsOpen(false);
     setQuery('');
   };
 
   return (
-    <div className="relative w-full max-w-md">
+    <div className="relative w-full">
       <div className="relative">
         <SearchIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
         <input
+          ref={inputRef}
           type="text"
           placeholder="Search"
-          className="w-full rounded-lg bg-neutral-100 py-2 pl-10 pr-4 text-sm text-foreground placeholder-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-300 dark:bg-neutral-900 dark:text-white dark:focus:ring-neutral-700"
+          className="w-full rounded-lg bg-neutral-100 py-2 pl-10 pr-4 text-base text-foreground placeholder-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-300 dark:bg-neutral-900 dark:text-white dark:focus:ring-neutral-700"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
       </div>
 
       {isOpen && results.length > 0 && (
-        <div className="absolute top-full mt-2 w-full overflow-hidden rounded-lg bg-white shadow-lg ring-1 ring-black/5 dark:bg-neutral-900 dark:ring-white/10">
+        <div className="absolute top-full left-0 right-0 mt-2 max-h-96 overflow-y-auto rounded-lg bg-white shadow-lg ring-1 ring-black/5 dark:bg-neutral-900 dark:ring-white/10">
           {results.map((profile) => (
             <button
               key={profile.instagram_id}

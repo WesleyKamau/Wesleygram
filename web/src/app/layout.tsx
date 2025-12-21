@@ -31,6 +31,12 @@ const instagramSans = localFont({
 export const metadata: Metadata = {
   title: "Wesleygram",
   description: "Instagram Profile Search",
+  viewport: {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false,
+  },
 };
 
 export default function RootLayout({
