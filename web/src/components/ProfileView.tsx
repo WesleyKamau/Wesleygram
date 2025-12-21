@@ -134,11 +134,12 @@ export function ProfileView({ profile }: ProfileViewProps) {
         <div className="relative h-14 w-14 sm:h-20 sm:w-20 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800">
           {!avatarLoaded && (
             <Skeleton
-              circle
               height="100%"
               width="100%"
               baseColor="#d6d6d6"
               highlightColor="#e9e9e9"
+              containerClassName="absolute inset-0 block h-full w-full leading-none"
+              className="block h-full w-full"
             />
           )}
           <Image
@@ -167,14 +168,14 @@ export function ProfileView({ profile }: ProfileViewProps) {
 
       <div className="relative aspect-square w-full max-h-[50svh] sm:max-h-none overflow-hidden rounded-lg bg-neutral-100 dark:bg-neutral-900">
         {!currentImageLoaded && (
-          <div className="absolute inset-0">
-            <Skeleton
-              height="100%"
-              width="100%"
-              baseColor="#d6d6d6"
-              highlightColor="#e9e9e9"
-            />
-          </div>
+          <Skeleton
+            height="100%"
+            width="100%"
+            baseColor="#d6d6d6"
+            highlightColor="#e9e9e9"
+            containerClassName="absolute inset-0 block h-full w-full leading-none"
+            className="block h-full w-full"
+          />
         )}
         {/* Stagger transitions to prevent darkening - incoming image fades in before outgoing fades out */}
         <Image
