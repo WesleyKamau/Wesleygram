@@ -33,9 +33,9 @@ export default async function ProfilePage({ params }: PageProps) {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-background text-foreground">
+    <div className="flex h-svh flex-col bg-background text-foreground">
       <Header />
-      <main className="flex flex-1 flex-col items-center justify-center px-4 py-4 sm:py-8 overflow-auto">
+      <main className="flex flex-1 flex-col items-center justify-center px-4 py-4 sm:py-8 overflow-y-auto">
         <ProfileView profile={profile} />
       </main>
       <Footer />
