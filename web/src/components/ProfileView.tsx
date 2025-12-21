@@ -129,8 +129,8 @@ export function ProfileView({ profile }: ProfileViewProps) {
     : getImageUrl(profile.v1_image_r2_key);
 
   return (
-    <div className="flex w-full max-w-md flex-col gap-2 sm:gap-4">
-      <div className="flex items-center gap-3 sm:gap-4 shrink-0">
+    <div className="flex w-full max-w-md flex-col gap-4">
+      <div className="flex items-center gap-4 shrink-0">
         <div className="relative h-14 w-14 sm:h-20 sm:w-20 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800">
           {!avatarLoaded && (
             <Skeleton
@@ -152,15 +152,24 @@ export function ProfileView({ profile }: ProfileViewProps) {
           />
         </div>
         <div className="flex flex-col">
-          <h2 className="text-lg sm:text-xl font-bold text-foreground">{profile.username}</h2>
-          <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400">{profile.full_name}</p>
+          {profile.instagram_id === '290944620' ? (
+            <>
+              <h2 className="text-xl font-bold text-foreground" title={`@${profile.username}`}>@{profile.username}</h2>
+              <p className="text-sm text-neutral-500 dark:text-neutral-400">Wesley</p>
+            </>
+          ) : (
+            <>
+              <h2 className="text-xl font-bold text-foreground">{profile.username}</h2>
+              <p className="text-sm text-neutral-500 dark:text-neutral-400">{profile.full_name}</p>
+            </>
+          )}
         </div>
       </div>
 
       {!hasProcessed && (
-        <div className="flex items-center gap-2 rounded-lg bg-yellow-500/10 p-3 sm:p-4 text-yellow-600 dark:text-yellow-500 shrink-0">
-          <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5" />
-          <p className="text-xs sm:text-sm">
+        <div className="flex items-center gap-2 rounded-lg bg-yellow-500/10 p-4 text-yellow-600 dark:text-yellow-500 shrink-0">
+          <AlertTriangle className="h-5 w-5" />
+          <p className="text-sm">
             This profile has not been processed yet. Showing original photo.
           </p>
         </div>
@@ -208,10 +217,10 @@ export function ProfileView({ profile }: ProfileViewProps) {
         )}
       </div>
 
-      <div className="flex gap-4 sm:gap-5 shrink-0">
+      <div className="flex gap-4 shrink-0">
         <button
           onClick={handleDownload}
-          className="flex flex-1 items-center justify-center gap-2.5 sm:gap-3 rounded-lg bg-blue-600 py-3.5 sm:py-4 text-base font-semibold text-white transition-colors hover:bg-blue-700"
+          className="flex flex-1 items-center justify-center gap-3 rounded-lg bg-blue-600 py-4 text-base font-semibold text-white transition-colors hover:bg-blue-700"
         >
           <Download className="h-5 w-5" />
           Download
@@ -219,7 +228,7 @@ export function ProfileView({ profile }: ProfileViewProps) {
         {hasProcessed && (
           <button
             onClick={() => setShowOriginal(!showOriginal)}
-            className="flex flex-1 items-center justify-center gap-2.5 sm:gap-3 rounded-lg bg-neutral-200 py-3.5 sm:py-4 text-base font-semibold text-foreground transition-colors hover:bg-neutral-300 dark:bg-neutral-800 dark:text-white dark:hover:bg-neutral-700"
+            className="flex flex-1 items-center justify-center gap-3 rounded-lg bg-neutral-200 py-4 text-base font-semibold text-foreground transition-colors hover:bg-neutral-300 dark:bg-neutral-800 dark:text-white dark:hover:bg-neutral-700"
           >
             <Eye className="h-5 w-5" />
             {showOriginal ? 'Show Wesley-ified' : 'Show Original'}
@@ -227,9 +236,20 @@ export function ProfileView({ profile }: ProfileViewProps) {
         )}
       </div>
 
-      <div className="rounded-lg bg-neutral-50 p-3.5 sm:p-4 dark:bg-neutral-900 shrink-0 overflow-visible">
-        <h3 className="mb-1 sm:mb-2 text-sm sm:text-base font-semibold text-neutral-500 dark:text-neutral-400">Bio</h3>
-        <p className="whitespace-pre-wrap text-sm sm:text-base text-foreground leading-relaxed">
+      {profile.instagram_id === '290944620' && (
+        <a
+          href="https://wesleykamau.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex w-full items-center justify-center gap-3 rounded-lg bg-neutral-200 py-4 text-base font-semibold text-foreground transition-colors hover:bg-neutral-300 dark:bg-neutral-800 dark:text-white dark:hover:bg-neutral-700"
+        >
+          Visit Website
+        </a>
+      )}
+
+      <div className="rounded-lg bg-neutral-50 p-4 dark:bg-neutral-900 shrink-0 overflow-visible">
+        <h3 className="mb-2 text-base font-semibold text-neutral-500 dark:text-neutral-400">Bio</h3>
+        <p className="whitespace-pre-wrap text-base text-foreground leading-relaxed">
           {profile.biography || 'No biography.'}
         </p>
       </div>
