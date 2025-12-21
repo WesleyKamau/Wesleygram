@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { Download, Eye, AlertTriangle } from 'lucide-react';
-import { Profile, getImageUrl } from '@/lib/profiles';
+import { Profile, getImageUrl } from '../lib/profiles';
 
 interface ProfileViewProps {
   profile: Profile;

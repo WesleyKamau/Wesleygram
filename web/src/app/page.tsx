@@ -1,7 +1,7 @@
-import { getProcessedProfiles } from '@/lib/profiles';
-import { Search } from '@/components/Search';
-import { Header } from '@/components/Header';
-import { Footer } from '@/components/Footer';
+import { getProcessedProfiles } from '../lib/profiles';
+import { Search } from '../components/Search';
+import { Header } from '../components/Header';
+import { Footer } from '../components/Footer';
 
 export default function Home() {
   const profiles = getProcessedProfiles();

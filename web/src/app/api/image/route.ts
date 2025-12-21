@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getPresignedUrl } from '@/lib/r2';
+import { getPresignedUrl } from '../../../lib/r2';
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
