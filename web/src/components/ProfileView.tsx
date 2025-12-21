@@ -131,7 +131,7 @@ export function ProfileView({ profile }: ProfileViewProps) {
   return (
     <div className="flex w-full max-w-md flex-col gap-4">
       <div className="flex items-center gap-4 shrink-0">
-        <div className="relative h-14 w-14 sm:h-20 sm:w-20 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800">
+        <div className="relative h-20 w-20 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800">
           {!avatarLoaded && (
             <Skeleton
               height="100%"
