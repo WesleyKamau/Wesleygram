@@ -33,34 +33,28 @@ export function ProfileView({ profile }: ProfileViewProps) {
 
   const handleDownload = async () => {
     try {
+      const key = displayOriginal ? profile.original_image_r2_key : profile.v1_image_r2_key;
+      const filename = `${profile.username}_${displayOriginal ? 'original' : 'wesleyified'}.png`;
+      
       console.log('[ProfileView] Starting download for:', {
         username: profile.username,
         displayOriginal,
-        imageUrl: imageUrl.substring(0, 100),
+        key,
+        filename,
       });
       
-      const response = await fetch(imageUrl);
+      // Use the download API endpoint which proxies the image
+      const downloadUrl = `/api/download?key=${encodeURIComponent(key)}&filename=${encodeURIComponent(filename)}`;
       
-      if (!response.ok) {
-        console.error('[ProfileView] Fetch failed with status:', {
-          status: response.status,
-          statusText: response.statusText,
-          url: imageUrl.substring(0, 100),
-        });
-        throw new Error(`Fetch failed: ${response.status} ${response.statusText}`);
-      }
-      
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
+      // Create a temporary link and trigger download
       const a = document.createElement('a');
-      a.href = url;
-      a.download = `${profile.username}_${displayOriginal ? 'original' : 'processed'}.png`;
+      a.href = downloadUrl;
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
-      window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
       
-      console.log('[ProfileView] Download completed successfully');
+      console.log('[ProfileView] Download initiated successfully');
     } catch (error) {
       console.error('[ProfileView] Download failed:', {
         error: error instanceof Error ? error.message : String(error),
