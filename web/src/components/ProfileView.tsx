@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { Download, Eye, AlertTriangle } from 'lucide-react';
 import { Profile, getImageUrl } from '@/lib/profiles';
+import { config } from '@/lib/config';
 
 interface ProfileViewProps {
   profile: Profile;
@@ -121,8 +122,8 @@ export function ProfileView({ profile }: ProfileViewProps) {
     : getImageUrl(profile.v1_image_r2_key);
 
   return (
-    <div className="flex w-full max-w-md flex-col gap-6">
-      <div className="flex items-center gap-4">
+    <div className="flex w-full max-w-md flex-col gap-3 sm:gap-6">
+      <div className="flex items-center gap-3 sm:gap-4">
         <div className="relative h-20 w-20 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800">
           <Image
             src={previewImageUrl}
@@ -203,20 +204,22 @@ export function ProfileView({ profile }: ProfileViewProps) {
         </p>
       </div>
       
-      <div className="grid grid-cols-3 gap-4 text-center">
-         <div>
+      {config.features.showProfileStats && (
+        <div className="hidden sm:grid grid-cols-3 gap-4 text-center">
+          <div>
             <div className="font-bold text-foreground">{profile.post_count}</div>
             <div className="text-xs text-neutral-500 dark:text-neutral-400">Posts</div>
-         </div>
-         <div>
+          </div>
+          <div>
             <div className="font-bold text-foreground">{profile.follower_count}</div>
             <div className="text-xs text-neutral-500 dark:text-neutral-400">Followers</div>
-         </div>
-         <div>
+          </div>
+          <div>
             <div className="font-bold text-foreground">{profile.following_count}</div>
             <div className="text-xs text-neutral-500 dark:text-neutral-400">Following</div>
-         </div>
-      </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
