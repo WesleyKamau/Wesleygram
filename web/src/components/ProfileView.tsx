@@ -5,6 +5,8 @@ import Image from 'next/image';
 import { Download, Eye, AlertTriangle } from 'lucide-react';
 import { Profile, getImageUrl } from '@/lib/profiles';
 import { config } from '@/lib/config';
+import Skeleton from 'react-loading-skeleton';
+import 'react-loading-skeleton/dist/skeleton.css';
 
 interface ProfileViewProps {
   profile: Profile;
@@ -12,6 +14,9 @@ interface ProfileViewProps {
 
 export function ProfileView({ profile }: ProfileViewProps) {
   const [showOriginal, setShowOriginal] = useState(false);
+  const [avatarLoaded, setAvatarLoaded] = useState(false);
+  const [originalLoaded, setOriginalLoaded] = useState(false);
+  const [processedLoaded, setProcessedLoaded] = useState(false);
 
   const hasProcessed = !!profile.v1_image_r2_key;
   const displayOriginal = showOriginal || !hasProcessed;
@@ -19,6 +24,8 @@ export function ProfileView({ profile }: ProfileViewProps) {
   const imageUrl = displayOriginal
     ? getImageUrl(profile.original_image_r2_key)
     : getImageUrl(profile.v1_image_r2_key);
+
+  const currentImageLoaded = displayOriginal ? originalLoaded : processedLoaded;
 
   // Log which image is being displayed
   if (process.env.NODE_ENV !== 'production') {
@@ -125,12 +132,22 @@ export function ProfileView({ profile }: ProfileViewProps) {
     <div className="flex w-full max-w-md flex-col gap-2 sm:gap-4">
       <div className="flex items-center gap-3 sm:gap-4 shrink-0">
         <div className="relative h-14 w-14 sm:h-20 sm:w-20 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800">
+          {!avatarLoaded && (
+            <Skeleton
+              circle
+              height="100%"
+              width="100%"
+              baseColor="#d6d6d6"
+              highlightColor="#e9e9e9"
+            />
+          )}
           <Image
             src={previewImageUrl}
             alt={profile.username}
             fill
-            className="object-cover"
+            className={`object-cover ${avatarLoaded ? '' : 'invisible'}`}
             unoptimized
+            onLoadingComplete={() => setAvatarLoaded(true)}
           />
         </div>
         <div className="flex flex-col">
@@ -149,6 +166,16 @@ export function ProfileView({ profile }: ProfileViewProps) {
       )}
 
       <div className="relative aspect-square w-full max-h-[50svh] sm:max-h-none overflow-hidden rounded-lg bg-neutral-100 dark:bg-neutral-900">
+        {!currentImageLoaded && (
+          <div className="absolute inset-0">
+            <Skeleton
+              height="100%"
+              width="100%"
+              baseColor="#d6d6d6"
+              highlightColor="#e9e9e9"
+            />
+          </div>
+        )}
         {/* Stagger transitions to prevent darkening - incoming image fades in before outgoing fades out */}
         <Image
           src={getImageUrl(profile.original_image_r2_key)}
@@ -156,11 +183,12 @@ export function ProfileView({ profile }: ProfileViewProps) {
           fill
           className={`object-cover transition-all duration-500 ease-in-out ${
             displayOriginal 
-              ? 'opacity-100 scale-100 blur-0 z-10 delay-0' 
+              ? `opacity-100 scale-100 blur-0 z-10 delay-0 ${originalLoaded ? '' : 'invisible'}` 
               : 'opacity-0 scale-105 blur-md z-0 delay-150'
           }`}
           unoptimized
           priority
+          onLoadingComplete={() => setOriginalLoaded(true)}
         />
         {hasProcessed && (
           <Image
@@ -169,11 +197,12 @@ export function ProfileView({ profile }: ProfileViewProps) {
             fill
             className={`object-cover transition-all duration-500 ease-in-out ${
               !displayOriginal 
-                ? 'opacity-100 scale-100 blur-0 z-10 delay-0' 
+                ? `opacity-100 scale-100 blur-0 z-10 delay-0 ${processedLoaded ? '' : 'invisible'}` 
                 : 'opacity-0 scale-105 blur-md z-0 delay-150'
             }`}
             unoptimized
             priority
+            onLoadingComplete={() => setProcessedLoaded(true)}
           />
         )}
       </div>
