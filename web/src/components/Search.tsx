@@ -129,7 +129,28 @@ export function Search({ profiles }: SearchProps) {
           return { profile: p, score };
         })
         .filter((item) => item.score > 0) // Only include matches
-        .sort((a, b) => b.score - a.score) // Sort by score descending
+        .sort((a, b) => {
+          // First: sort by match score
+          if (b.score !== a.score) return b.score - a.score;
+          
+          // Then: apply hierarchy
+          const aMutual = a.profile.is_follower && a.profile.is_following;
+          const bMutual = b.profile.is_follower && b.profile.is_following;
+          if (aMutual !== bMutual) return aMutual ? -1 : 1;
+          
+          // Then: followers (but not following)
+          const aFollower = a.profile.is_follower && !a.profile.is_following;
+          const bFollower = b.profile.is_follower && !b.profile.is_following;
+          if (aFollower !== bFollower) return aFollower ? -1 : 1;
+          
+          // Then: by follower count
+          if (b.profile.follower_count !== a.profile.follower_count) {
+            return b.profile.follower_count - a.profile.follower_count;
+          }
+          
+          // Finally: alphabetical by username
+          return a.profile.username.localeCompare(b.profile.username);
+        })
         .slice(0, 10) // Limit to 10 results
         .map((item) => item.profile);
 
@@ -171,6 +192,26 @@ export function Search({ profiles }: SearchProps) {
     setQuery('');
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (query.trim()) {
+        // Navigate to search page with query
+        if (inputRef.current) {
+          inputRef.current.blur();
+        }
+        router.push(`/search?q=${encodeURIComponent(query.trim())}`);
+        setIsOpen(false);
+      }
+    } else if (e.key === 'Escape') {
+      setIsOpen(false);
+      setQuery('');
+      if (inputRef.current) {
+        inputRef.current.blur();
+      }
+    }
+  };
+
   return (
     <div className="relative w-full" ref={anchorRef}>
       <div className="relative">
@@ -182,6 +223,7 @@ export function Search({ profiles }: SearchProps) {
           className="w-full rounded-lg bg-neutral-100 py-2 pl-10 pr-4 text-base text-foreground placeholder-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-300 dark:bg-neutral-900 dark:text-white dark:focus:ring-neutral-700"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={handleKeyDown}
         />
       </div>
 
