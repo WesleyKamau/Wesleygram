@@ -22,7 +22,8 @@ export default function Home() {
         </div>
         <div className="flex flex-1 items-center justify-center px-4 py-8">
           <div className="text-center text-neutral-400 dark:text-neutral-500">
-            <p className="text-sm">This site is a work in progress</p>
+            <p className="text-sm">Look yourself up (or someone else)</p>
+            <p className="text-sm">Im still working on stuff to put here maybe liek a cool preview</p>
           </div>
         </div>
       </main>
