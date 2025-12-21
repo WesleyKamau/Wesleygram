@@ -16,9 +16,7 @@ export function ProfileView({ profile }: ProfileViewProps) {
   const displayOriginal = showOriginal || !hasProcessed;
 
   const imageUrl = displayOriginal
-    ? profile.original_image_r2_key
-      ? getImageUrl(profile.original_image_r2_key)
-      : profile.profile_pic_url
+    ? getImageUrl(profile.original_image_r2_key)
     : getImageUrl(profile.v1_image_r2_key);
 
   // Log which image is being displayed
@@ -27,9 +25,7 @@ export function ProfileView({ profile }: ProfileViewProps) {
     hasProcessed,
     displayOriginal,
     showOriginal,
-    imageSource: displayOriginal 
-      ? (profile.original_image_r2_key ? 'original_r2' : 'profile_pic_url')
-      : 'processed_r2',
+    imageSource: displayOriginal ? 'original_r2' : 'processed_r2',
     imageUrl: imageUrl.substring(0, 100), // Log first 100 chars to avoid sensitive data
     original_image_r2_key: profile.original_image_r2_key,
     v1_image_r2_key: profile.v1_image_r2_key,
@@ -74,12 +70,17 @@ export function ProfileView({ profile }: ProfileViewProps) {
     }
   };
 
+  // Use R2 image for preview photo to avoid Instagram blocking
+  const previewImageUrl = profile.original_image_r2_key 
+    ? getImageUrl(profile.original_image_r2_key)
+    : getImageUrl(profile.v1_image_r2_key);
+
   return (
     <div className="flex w-full max-w-md flex-col gap-6">
       <div className="flex items-center gap-4">
         <div className="relative h-20 w-20 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800">
           <Image
-            src={profile.profile_pic_url}
+            src={previewImageUrl}
             alt={profile.username}
             fill
             className="object-cover"
