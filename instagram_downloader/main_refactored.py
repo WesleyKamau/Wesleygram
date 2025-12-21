@@ -228,8 +228,19 @@ def save_metadata(metadata: Dict, metadata_file: Path):
         except Exception:
             pass
 
-    # Atomic replace
-    os.replace(tmp_path, metadata_file)
+    # Atomic replace with Windows-friendly fallback for file locks
+    try:
+        os.replace(tmp_path, metadata_file)
+    except PermissionError:
+        # Fallback: write in-place to the destination to avoid OS lock issues
+        try:
+            with open(metadata_file, 'w', encoding='utf-8') as f:
+                json.dump(metadata, f, indent=2, ensure_ascii=False)
+        finally:
+            try:
+                os.remove(tmp_path)
+            except Exception:
+                pass
 
 def get_existing_usernames(metadata: Dict) -> Set[str]:
     """Return a set of usernames already present in metadata"""
@@ -418,7 +429,8 @@ def collect_profile_metadata(
     generate_html: bool = False,
     html_output_dir: Optional[Path] = None,
     username_id_map: Optional[Dict[str, str]] = None,
-    intra_delay: float = 0.0
+    intra_delay: float = 0.0,
+    dry_run: bool = False,
 ) -> bool:
     """
     Collect metadata and optionally download profile picture for a single user.
@@ -449,9 +461,10 @@ def collect_profile_metadata(
         if record.get("status") == "completed" and (not download_images or record.get("local_path")):
             print(f"  ⊙ Already completed, skipping")
             return True
-        # Update flags
-        record["is_follower"] = is_follower
-        record["is_following"] = is_following
+        # Update flags (skip mutation on dry run)
+        if not dry_run:
+            record["is_follower"] = is_follower
+            record["is_following"] = is_following
     else:
         # Create new record
         record = {
@@ -484,13 +497,20 @@ def collect_profile_metadata(
             "v1_processed_at": None
         }
     
-    # Mark as processing; write under a stable initial key
+    # Mark as processing; write under a stable initial key (skip metadata mutation on dry run)
     record["status"] = "processing"
     initial_key = str(record.get("instagram_id") or record.get("username"))
-    metadata["profiles"][initial_key] = record
+    if not dry_run:
+        metadata["profiles"][initial_key] = record
     
     try:
         # Fetch profile data based on method
+        if dry_run:
+            # Dry run: do not perform network calls or writes; just report actions
+            print(f"  [DRY RUN] Would process @{username} (follower={is_follower}, following={is_following})")
+            print(f"           Method={method.value}, download_images={download_images}, upload_to_r2={upload_to_r2_enabled}, generate_html={generate_html}")
+            return True
+
         if method == DownloadMethod.INSTASCRAPER:
             if download_images:
                 result = download_with_instascraper(username, output_dir)
@@ -577,20 +597,25 @@ def collect_profile_metadata(
             r2_key = upload_to_r2(result["image_bytes"], instagram_id, "original")
             if r2_key:
                 print(f"  ☁️  Uploaded to R2: {r2_key}")
-                record["r2_original_upload_status"] = "uploaded"
-                record["r2_original_error"] = None
+                if not dry_run:
+                    record["r2_original_upload_status"] = "uploaded"
+                    record["r2_original_error"] = None
             else:
-                record["r2_original_upload_status"] = "failed"
-                record["r2_original_error"] = record.get("r2_original_error") or "Upload failed or credentials missing"
+                if not dry_run:
+                    record["r2_original_upload_status"] = "failed"
+                    record["r2_original_error"] = record.get("r2_original_error") or "Upload failed or credentials missing"
         elif upload_to_r2_enabled and not result.get("image_bytes"):
-            record["r2_original_upload_status"] = "skipped"
-            record["r2_original_error"] = "No image bytes available"
+            if not dry_run:
+                record["r2_original_upload_status"] = "skipped"
+                record["r2_original_error"] = "No image bytes available"
         else:
-            record["r2_original_upload_status"] = "disabled"
-            record["r2_original_error"] = None
+            if not dry_run:
+                record["r2_original_upload_status"] = "disabled"
+                record["r2_original_error"] = None
         
         # Update record with fetched data
-        record.update({
+        if not dry_run:
+            record.update({
             "instagram_id": result.get("instagram_id") or (username_id_map.get(username) if username_id_map else None),
             "full_name": result.get("full_name"),
             "biography": result.get("biography"),
@@ -611,7 +636,7 @@ def collect_profile_metadata(
         })
         
         # Generate HTML report if requested
-        if generate_html and html_output_dir:
+        if generate_html and html_output_dir and not dry_run:
             try:
                 # Prepare data for HTML report
                 html_data = record.copy()
@@ -628,30 +653,32 @@ def collect_profile_metadata(
                 print(f"  ⚠ Failed to generate HTML: {e}")
         
         # Update metadata with final key, removing temporary key if changed
-        final_key = str(record.get("instagram_id") or username)
-        if final_key != initial_key and initial_key in metadata["profiles"]:
-            try:
-                del metadata["profiles"][initial_key]
-            except Exception:
-                pass
-        metadata["profiles"][final_key] = record
+        if not dry_run:
+            final_key = str(record.get("instagram_id") or username)
+            if final_key != initial_key and initial_key in metadata["profiles"]:
+                try:
+                    del metadata["profiles"][initial_key]
+                except Exception:
+                    pass
+            metadata["profiles"][final_key] = record
         
         print(f"  ✓ Completed: {record.get('full_name', username)} (@{username})")
         return True
         
     except Exception as e:
         # Mark as failed
-        record["status"] = "failed"
-        record["error"] = str(e)
-        record["last_processed_at"] = datetime.now().isoformat()
-        
-        final_key = str(record.get("instagram_id") or username)
-        if final_key != initial_key and initial_key in metadata["profiles"]:
-            try:
-                del metadata["profiles"][initial_key]
-            except Exception:
-                pass
-        metadata["profiles"][final_key] = record
+        if not dry_run:
+            record["status"] = "failed"
+            record["error"] = str(e)
+            record["last_processed_at"] = datetime.now().isoformat()
+            
+            final_key = str(record.get("instagram_id") or username)
+            if final_key != initial_key and initial_key in metadata["profiles"]:
+                try:
+                    del metadata["profiles"][initial_key]
+                except Exception:
+                    pass
+            metadata["profiles"][final_key] = record
         
         print(f"  ✗ Failed: {e}")
         return False
@@ -670,7 +697,8 @@ def process_profiles_batch(
     html_output_dir: Optional[Path] = None,
     delay_range: Tuple[float, float] = (2, 5),
     username_id_map: Optional[Dict[str, str]] = None,
-    intra_delay: float = 0.0
+    intra_delay: float = 0.0,
+    dry_run: bool = False,
 ) -> Tuple[int, int]:
     """
     Process a batch of profiles with rate limiting.
@@ -696,7 +724,8 @@ def process_profiles_batch(
             generate_html=generate_html,
             html_output_dir=html_output_dir,
             username_id_map=username_id_map,
-            intra_delay=intra_delay
+            intra_delay=intra_delay,
+            dry_run=dry_run,
         )
         
         if success:
@@ -705,10 +734,11 @@ def process_profiles_batch(
             fail_count += 1
         
         # Save metadata after each profile
-        save_metadata(metadata, metadata_file)
+        if not dry_run:
+            save_metadata(metadata, metadata_file)
         
         # Rate limiting delay
-        if i < len(usernames):
+        if i < len(usernames) and not dry_run:
             delay = random.uniform(*delay_range)
             time.sleep(delay)
     
@@ -1198,6 +1228,12 @@ Examples:
     )
 
     parser.add_argument(
+        '--dry-run',
+        action='store_true',
+        help='Simulate processing without writing files, uploading, or modifying metadata'
+    )
+
+    parser.add_argument(
         '--clear-metadata',
         action='store_true',
         help='Clear profiles_metadata.json (prompts for confirmation)'
@@ -1263,6 +1299,7 @@ def main():
     print(f"Upload to R2: {args.upload_r2}")
     print(f"Generate HTML: {args.test_html}")
     print(f"Skip Existing: {args.skip_existing}")
+    print(f"Dry Run: {args.dry_run}")
     print(f"Delay Range: {args.delay[0]}-{args.delay[1]}s")
     print(f"Intra Delay: {args.intra_delay}s")
     print("=" * 70)
@@ -1334,11 +1371,13 @@ def main():
             html_output_dir=html_output_dir if args.test_html else None,
             delay_range=tuple(args.delay),
             username_id_map=username_id_map,
-            intra_delay=float(args.intra_delay)
+            intra_delay=float(args.intra_delay),
+            dry_run=bool(args.dry_run)
         )
         
         # Save final metadata
-        save_metadata(metadata, metadata_file)
+        if not args.dry_run:
+            save_metadata(metadata, metadata_file)
         
         # Print summary
         print("\n" + "=" * 70)
@@ -1347,7 +1386,10 @@ def main():
         print(f"Total processed: {success_count + fail_count}")
         print(f"  ✓ Success: {success_count}")
         print(f"  ✗ Failed: {fail_count}")
-        print(f"\n📁 Metadata saved to: {metadata_file}")
+        if not args.dry_run:
+            print(f"\n📁 Metadata saved to: {metadata_file}")
+        else:
+            print("\n🧪 Dry run: No files written, no uploads performed.")
         if not args.no_images:
             print(f"📸 Images saved to: {output_dir}")
         if args.test_html:
