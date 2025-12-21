@@ -4,7 +4,6 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { Download, Eye, AlertTriangle } from 'lucide-react';
 import { Profile, getImageUrl } from '@/lib/profiles';
-import { config } from '@/lib/config';
 
 interface ProfileViewProps {
   profile: Profile;
@@ -17,116 +16,70 @@ export function ProfileView({ profile }: ProfileViewProps) {
   const displayOriginal = showOriginal || !hasProcessed;
 
   const imageUrl = displayOriginal
-    ? getImageUrl(profile.original_image_r2_key)
+    ? profile.original_image_r2_key
+      ? getImageUrl(profile.original_image_r2_key)
+      : profile.profile_pic_url
     : getImageUrl(profile.v1_image_r2_key);
 
   // Log which image is being displayed
-  if (process.env.NODE_ENV !== 'production') {
-    console.log('[ProfileView] Image display state:', {
-      username: profile.username,
-      hasProcessed,
-      displayOriginal,
-      showOriginal,
-      imageSource: displayOriginal ? 'original_r2' : 'processed_r2',
-      imageUrl: imageUrl.substring(0, 100), // Log first 100 chars to avoid sensitive data
-      original_image_r2_key: profile.original_image_r2_key,
-      v1_image_r2_key: profile.v1_image_r2_key,
-    });
-  }
+  console.log('[ProfileView] Image display state:', {
+    username: profile.username,
+    hasProcessed,
+    displayOriginal,
+    showOriginal,
+    imageSource: displayOriginal 
+      ? (profile.original_image_r2_key ? 'original_r2' : 'profile_pic_url')
+      : 'processed_r2',
+    imageUrl: imageUrl.substring(0, 100), // Log first 100 chars to avoid sensitive data
+    original_image_r2_key: profile.original_image_r2_key,
+    v1_image_r2_key: profile.v1_image_r2_key,
+  });
 
   const handleDownload = async () => {
     try {
-      const key = displayOriginal ? profile.original_image_r2_key : profile.v1_image_r2_key;
+      console.log('[ProfileView] Starting download for:', {
+        username: profile.username,
+        displayOriginal,
+        imageUrl: imageUrl.substring(0, 100),
+      });
       
-      if (!key) {
-        if (process.env.NODE_ENV !== 'production') {
-          console.error('[ProfileView] No image key available');
-        }
-        return;
-      }
+      const response = await fetch(imageUrl);
       
-      const filename = `${profile.username}_${displayOriginal ? 'original' : 'wesleyified'}.png`;
-      
-      if (process.env.NODE_ENV !== 'production') {
-        console.log('[ProfileView] Starting download for:', {
-          username: profile.username,
-          displayOriginal,
-          key,
-          filename,
+      if (!response.ok) {
+        console.error('[ProfileView] Fetch failed with status:', {
+          status: response.status,
+          statusText: response.statusText,
+          url: imageUrl.substring(0, 100),
         });
+        throw new Error(`Fetch failed: ${response.status} ${response.statusText}`);
       }
       
-      // Detect if user is on a mobile device
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      
-      // Check if Web Share API is available (iOS Safari, modern browsers) - only on mobile
-      if (isMobile && navigator.share && navigator.canShare) {
-        try {
-          // Fetch the image as a blob
-          const downloadUrl = `/api/download?key=${encodeURIComponent(key)}&filename=${encodeURIComponent(filename)}`;
-          const response = await fetch(downloadUrl);
-          
-          if (!response.ok) {
-            throw new Error('Failed to fetch image');
-          }
-          
-          const blob = await response.blob();
-          const file = new File([blob], filename, { type: 'image/png' });
-          
-          // Check if we can share this file
-          if (navigator.canShare({ files: [file] })) {
-            await navigator.share({
-              files: [file],
-              title: `${profile.username} - ${displayOriginal ? 'Original' : 'Wesley-ified'}`,
-              text: `Photo from Wesleygram`,
-            });
-            if (process.env.NODE_ENV !== 'production') {
-              console.log('[ProfileView] Share completed successfully');
-            }
-            return;
-          }
-        } catch (shareError) {
-          // If share fails or is cancelled, fall through to download
-          if (process.env.NODE_ENV !== 'production') {
-            console.log('[ProfileView] Share not available or cancelled, falling back to download');
-          }
-        }
-      }
-      
-      // Fallback to regular download (desktop or if share not available)
-      const downloadUrl = `/api/download?key=${encodeURIComponent(key)}&filename=${encodeURIComponent(filename)}`;
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = downloadUrl;
-      a.download = filename;
+      a.href = url;
+      a.download = `${profile.username}_${displayOriginal ? 'original' : 'processed'}.png`;
       document.body.appendChild(a);
       a.click();
+      window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
       
-      if (process.env.NODE_ENV !== 'production') {
-        console.log('[ProfileView] Download initiated successfully');
-      }
+      console.log('[ProfileView] Download completed successfully');
     } catch (error) {
-      if (process.env.NODE_ENV !== 'production') {
-        console.error('[ProfileView] Download failed:', {
-          error: error instanceof Error ? error.message : String(error),
-          username: profile.username,
-          displayOriginal,
-        });
-      }
+      console.error('[ProfileView] Download failed:', {
+        error: error instanceof Error ? error.message : String(error),
+        username: profile.username,
+        displayOriginal,
+      });
     }
   };
 
-  // Use R2 image for preview photo to avoid Instagram blocking
-  const previewImageUrl = profile.original_image_r2_key 
-    ? getImageUrl(profile.original_image_r2_key)
-    : getImageUrl(profile.v1_image_r2_key);
-
   return (
-    <div className="flex w-full max-w-md flex-col gap-3 sm:gap-6">
-      <div className="flex items-center gap-3 sm:gap-4">
+    <div className="flex w-full max-w-md flex-col gap-6">
+      <div className="flex items-center gap-4">
         <div className="relative h-20 w-20 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800">
           <Image
-            src={previewImageUrl}
+            src={profile.profile_pic_url}
             alt={profile.username}
             fill
             className="object-cover"
@@ -149,33 +102,13 @@ export function ProfileView({ profile }: ProfileViewProps) {
       )}
 
       <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-neutral-100 dark:bg-neutral-900">
-        {/* Stagger transitions to prevent darkening - incoming image fades in before outgoing fades out */}
         <Image
-          src={getImageUrl(profile.original_image_r2_key)}
+          src={imageUrl}
           alt={profile.username}
           fill
-          className={`object-cover transition-all duration-500 ease-in-out ${
-            displayOriginal 
-              ? 'opacity-100 scale-100 blur-0 z-10 delay-0' 
-              : 'opacity-0 scale-105 blur-md z-0 delay-150'
-          }`}
-          unoptimized
-          priority
+          className="object-cover"
+          unoptimized // R2 images might not be optimized by Next.js image optimization without config
         />
-        {hasProcessed && (
-          <Image
-            src={getImageUrl(profile.v1_image_r2_key)}
-            alt={profile.username}
-            fill
-            className={`object-cover transition-all duration-500 ease-in-out ${
-              !displayOriginal 
-                ? 'opacity-100 scale-100 blur-0 z-10 delay-0' 
-                : 'opacity-0 scale-105 blur-md z-0 delay-150'
-            }`}
-            unoptimized
-            priority
-          />
-        )}
       </div>
 
       <div className="flex gap-4">
@@ -192,7 +125,7 @@ export function ProfileView({ profile }: ProfileViewProps) {
             className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-neutral-200 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-neutral-300 dark:bg-neutral-800 dark:text-white dark:hover:bg-neutral-700"
           >
             <Eye className="h-4 w-4" />
-            {showOriginal ? 'Show Wesley-ified' : 'Show Original'}
+            {showOriginal ? 'Show Processed' : 'Show Original'}
           </button>
         )}
       </div>
@@ -204,22 +137,20 @@ export function ProfileView({ profile }: ProfileViewProps) {
         </p>
       </div>
       
-      {config.features.showProfileStats && (
-        <div className="hidden sm:grid grid-cols-3 gap-4 text-center">
-          <div>
+      <div className="grid grid-cols-3 gap-4 text-center">
+         <div>
             <div className="font-bold text-foreground">{profile.post_count}</div>
             <div className="text-xs text-neutral-500 dark:text-neutral-400">Posts</div>
-          </div>
-          <div>
+         </div>
+         <div>
             <div className="font-bold text-foreground">{profile.follower_count}</div>
             <div className="text-xs text-neutral-500 dark:text-neutral-400">Followers</div>
-          </div>
-          <div>
+         </div>
+         <div>
             <div className="font-bold text-foreground">{profile.following_count}</div>
             <div className="text-xs text-neutral-500 dark:text-neutral-400">Following</div>
-          </div>
-        </div>
-      )}
+         </div>
+      </div>
     </div>
   );
 }
