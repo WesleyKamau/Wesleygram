@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Search as SearchIcon } from 'lucide-react';
@@ -18,8 +19,32 @@ export function Search({ profiles }: SearchProps) {
   const [results, setResults] = useState<Profile[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const anchorRef = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted] = useState(false);
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number; width: number }>({ top: 0, left: 0, width: 0 });
   const [loadedAvatars, setLoadedAvatars] = useState<Record<string, boolean>>({});
   const router = useRouter();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const update = () => {
+      const el = anchorRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      setDropdownPos({ top: rect.bottom + 8, left: rect.left, width: rect.width });
+    };
+    update();
+    window.addEventListener('resize', update);
+    window.addEventListener('scroll', update, { passive: true });
+    return () => {
+      window.removeEventListener('resize', update);
+      window.removeEventListener('scroll', update);
+    };
+  }, [isOpen, query]);
 
   useEffect(() => {
     if (query.length > 0) {
@@ -147,7 +172,7 @@ export function Search({ profiles }: SearchProps) {
   };
 
   return (
-    <div className="relative w-full">
+    <div className="relative w-full" ref={anchorRef}>
       <div className="relative">
         <SearchIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
         <input
@@ -160,54 +185,66 @@ export function Search({ profiles }: SearchProps) {
         />
       </div>
 
-      {isOpen && results.length > 0 && (
-        <div className="absolute top-full left-0 right-0 mt-2 max-h-96 overflow-y-auto rounded-lg bg-white shadow-lg ring-1 ring-black/5 dark:bg-neutral-900 dark:ring-white/10">
-          {results.map((profile) => (
-            <button
-              key={profile.instagram_id}
-              className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-neutral-100 dark:hover:bg-neutral-800"
-              onClick={() => handleSelect(profile)}
-            >
-              <div 
-                className="relative overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800"
-                style={{ width: PROFILE_PREVIEW_SIZE, height: PROFILE_PREVIEW_SIZE }}
+      {mounted && isOpen && results.length > 0 && createPortal(
+        (
+          <div
+            style={{
+              position: 'fixed',
+              top: dropdownPos.top,
+              left: dropdownPos.left,
+              width: dropdownPos.width,
+              zIndex: 1000,
+            }}
+            className="mt-2 max-h-96 overflow-y-auto rounded-lg bg-white shadow-lg ring-1 ring-black/5 dark:bg-neutral-900 dark:ring-white/10"
+          >
+            {results.map((profile) => (
+              <button
+                key={profile.instagram_id}
+                className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                onClick={() => handleSelect(profile)}
               >
-                {!loadedAvatars[profile.instagram_id] && (
-                  <Skeleton
-                    height="100%"
-                    width="100%"
-                    baseColor="#d6d6d6"
-                    highlightColor="#e9e9e9"
-                    containerClassName="absolute inset-0 block h-full w-full leading-none"
-                    className="block h-full w-full"
+                <div 
+                  className="relative overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800"
+                  style={{ width: PROFILE_PREVIEW_SIZE, height: PROFILE_PREVIEW_SIZE }}
+                >
+                  {!loadedAvatars[profile.instagram_id] && (
+                    <Skeleton
+                      height="100%"
+                      width="100%"
+                      baseColor="#d6d6d6"
+                      highlightColor="#e9e9e9"
+                      containerClassName="absolute inset-0 block h-full w-full leading-none"
+                      className="block h-full w-full"
+                    />
+                  )}
+                  <Image
+                    src={
+                      profile.v1_image_r2_key
+                        ? getImageUrl(profile.v1_image_r2_key)
+                        : profile.profile_pic_url
+                    }
+                    alt={profile.username}
+                    fill
+                    className={`object-cover ${loadedAvatars[profile.instagram_id] ? '' : 'invisible'}`}
+                    unoptimized={!!profile.v1_image_r2_key}
+                    onLoadingComplete={() =>
+                      setLoadedAvatars((prev) => ({ ...prev, [profile.instagram_id]: true }))
+                    }
                   />
-                )}
-                <Image
-                  src={
-                    profile.v1_image_r2_key
-                      ? getImageUrl(profile.v1_image_r2_key)
-                      : profile.profile_pic_url
-                  }
-                  alt={profile.username}
-                  fill
-                  className={`object-cover ${loadedAvatars[profile.instagram_id] ? '' : 'invisible'}`}
-                  unoptimized={!!profile.v1_image_r2_key}
-                  onLoadingComplete={() =>
-                    setLoadedAvatars((prev) => ({ ...prev, [profile.instagram_id]: true }))
-                  }
-                />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-sm font-semibold text-foreground">
-                  {profile.username}
-                </span>
-                <span className="text-xs text-neutral-500 dark:text-neutral-400">
-                  {profile.full_name}
-                </span>
-              </div>
-            </button>
-          ))}
-        </div>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-sm font-semibold text-foreground">
+                    {profile.username}
+                  </span>
+                  <span className="text-xs text-neutral-500 dark:text-neutral-400">
+                    {profile.full_name}
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
+        ),
+        document.body
       )}
     </div>
   );

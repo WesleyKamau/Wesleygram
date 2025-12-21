@@ -1,8 +1,5 @@
-import { getProfileById } from '@/lib/profiles';
-import { ProfileView } from '@/components/ProfileView';
-import { Header } from '@/components/Header';
-import { Footer } from '@/components/Footer';
-import { PageTransition } from '@/components/PageTransition';
+import { getProfileById, getProcessedProfiles } from '@/lib/profiles';
+import { ProfilePageClient } from '@/components/ProfilePageClient';
 import { getPresignedUrl } from '@/lib/r2';
 import { redirect } from 'next/navigation';
 import type { Metadata } from 'next';
@@ -25,18 +22,22 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const imageKey = profile.v1_image_r2_key || profile.original_image_r2_key;
   const imageUrl = imageKey ? await getPresignedUrl(imageKey) : null;
 
+  const pageTitle = `@${profile.username}, wesley-ified`;
+  const pageDescription =
+    profile.biography || `View ${profile.full_name}'s Wesley-ified profile photo`;
+
   return {
-    title: `Wesleygram - @${profile.username}`,
-    description: profile.biography || `View ${profile.full_name}'s Wesley-ified profile photo`,
+    title: pageTitle,
+    description: pageDescription,
     openGraph: {
-      title: `@${profile.username} - Wesleygram`,
-      description: profile.biography || `View ${profile.full_name}'s Wesley-ified profile photo`,
+      title: pageTitle,
+      description: pageDescription,
       images: imageUrl ? [{ url: imageUrl }] : [],
     },
     twitter: {
       card: 'summary_large_image',
-      title: `@${profile.username} - Wesleygram`,
-      description: profile.biography || `View ${profile.full_name}'s Wesley-ified profile photo`,
+      title: pageTitle,
+      description: pageDescription,
       images: imageUrl ? [imageUrl] : [],
     },
   };
@@ -50,14 +51,7 @@ export default async function ProfilePage({ params }: PageProps) {
     redirect('/?error=user-not-found');
   }
 
-  return (
-    <PageTransition>
-      <div className="flex h-svh flex-col bg-background text-foreground">
-        <Header />
-        <main className="flex flex-1 flex-col items-center px-4 py-3 sm:py-6 min-h-0">
-          <ProfileView profile={profile} />
-        </main>
-      </div>
-    </PageTransition>
-  );
+  const allProfiles = getProcessedProfiles();
+
+  return <ProfilePageClient profile={profile} allProfiles={allProfiles} />;
 }
