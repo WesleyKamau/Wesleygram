@@ -20,33 +20,80 @@ export function ProfileView({ profile }: ProfileViewProps) {
     : getImageUrl(profile.v1_image_r2_key);
 
   // Log which image is being displayed
-  console.log('[ProfileView] Image display state:', {
-    username: profile.username,
-    hasProcessed,
-    displayOriginal,
-    showOriginal,
-    imageSource: displayOriginal ? 'original_r2' : 'processed_r2',
-    imageUrl: imageUrl.substring(0, 100), // Log first 100 chars to avoid sensitive data
-    original_image_r2_key: profile.original_image_r2_key,
-    v1_image_r2_key: profile.v1_image_r2_key,
-  });
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('[ProfileView] Image display state:', {
+      username: profile.username,
+      hasProcessed,
+      displayOriginal,
+      showOriginal,
+      imageSource: displayOriginal ? 'original_r2' : 'processed_r2',
+      imageUrl: imageUrl.substring(0, 100), // Log first 100 chars to avoid sensitive data
+      original_image_r2_key: profile.original_image_r2_key,
+      v1_image_r2_key: profile.v1_image_r2_key,
+    });
+  }
 
   const handleDownload = async () => {
     try {
       const key = displayOriginal ? profile.original_image_r2_key : profile.v1_image_r2_key;
+      
+      if (!key) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.error('[ProfileView] No image key available');
+        }
+        return;
+      }
+      
       const filename = `${profile.username}_${displayOriginal ? 'original' : 'wesleyified'}.png`;
       
-      console.log('[ProfileView] Starting download for:', {
-        username: profile.username,
-        displayOriginal,
-        key,
-        filename,
-      });
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('[ProfileView] Starting download for:', {
+          username: profile.username,
+          displayOriginal,
+          key,
+          filename,
+        });
+      }
       
-      // Use the download API endpoint which proxies the image
+      // Detect if user is on a mobile device
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      
+      // Check if Web Share API is available (iOS Safari, modern browsers) - only on mobile
+      if (isMobile && navigator.share && navigator.canShare) {
+        try {
+          // Fetch the image as a blob
+          const downloadUrl = `/api/download?key=${encodeURIComponent(key)}&filename=${encodeURIComponent(filename)}`;
+          const response = await fetch(downloadUrl);
+          
+          if (!response.ok) {
+            throw new Error('Failed to fetch image');
+          }
+          
+          const blob = await response.blob();
+          const file = new File([blob], filename, { type: 'image/png' });
+          
+          // Check if we can share this file
+          if (navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              files: [file],
+              title: `${profile.username} - ${displayOriginal ? 'Original' : 'Wesley-ified'}`,
+              text: `Photo from Wesleygram`,
+            });
+            if (process.env.NODE_ENV !== 'production') {
+              console.log('[ProfileView] Share completed successfully');
+            }
+            return;
+          }
+        } catch (shareError) {
+          // If share fails or is cancelled, fall through to download
+          if (process.env.NODE_ENV !== 'production') {
+            console.log('[ProfileView] Share not available or cancelled, falling back to download');
+          }
+        }
+      }
+      
+      // Fallback to regular download (desktop or if share not available)
       const downloadUrl = `/api/download?key=${encodeURIComponent(key)}&filename=${encodeURIComponent(filename)}`;
-      
-      // Create a temporary link and trigger download
       const a = document.createElement('a');
       a.href = downloadUrl;
       a.download = filename;
@@ -54,13 +101,17 @@ export function ProfileView({ profile }: ProfileViewProps) {
       a.click();
       document.body.removeChild(a);
       
-      console.log('[ProfileView] Download initiated successfully');
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('[ProfileView] Download initiated successfully');
+      }
     } catch (error) {
-      console.error('[ProfileView] Download failed:', {
-        error: error instanceof Error ? error.message : String(error),
-        username: profile.username,
-        displayOriginal,
-      });
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('[ProfileView] Download failed:', {
+          error: error instanceof Error ? error.message : String(error),
+          username: profile.username,
+          displayOriginal,
+        });
+      }
     }
   };
 
