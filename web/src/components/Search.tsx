@@ -12,6 +12,7 @@ import { PROFILE_PREVIEW_SIZE } from '@/lib/constants';
 import { Checkmark } from './Checkmark';
 import Skeleton from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
+import { navigateOnPlainLeftClick } from '@/lib/links';
 
 interface SearchProps {
   profiles: Profile[];
@@ -128,10 +129,11 @@ export function Search({ profiles }: SearchProps) {
             className="mt-2 max-h-96 overflow-y-auto rounded-lg bg-white shadow-lg ring-1 ring-black/5 dark:bg-neutral-900 dark:ring-white/10"
           >
             {results.map((profile) => (
-              <button
+              <a
                 key={profile.instagram_id}
-                className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-neutral-100 dark:hover:bg-neutral-800"
-                onClick={() => handleSelect(profile)}
+                href={`/${profile.instagram_id}`}
+                className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-neutral-100 dark:hover:bg-neutral-800 no-underline"
+                onClick={(e) => navigateOnPlainLeftClick(e, () => handleSelect(profile))}
               >
                 <div 
                   className="relative overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800"
@@ -173,7 +175,7 @@ export function Search({ profiles }: SearchProps) {
                     {profile.full_name}
                   </span>
                 </div>
-              </button>
+              </a>
             ))}
           </div>
         ),
