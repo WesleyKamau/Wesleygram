@@ -1,14 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { Download, Eye, AlertTriangle } from 'lucide-react';
+import { Download, Eye, AlertTriangle, Star, EyeOff } from 'lucide-react';
 import { Profile, getImageUrl } from '@/lib/profiles';
 import { selectProcessedKey } from '@/lib/images';
 import { Checkmark } from './Checkmark';
 import { config } from '@/lib/config';
 import Skeleton from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
+
+const isDev = process.env.NODE_ENV !== 'production';
 
 interface ProfileViewProps {
   profile: Profile;
@@ -19,6 +21,24 @@ export function ProfileView({ profile }: ProfileViewProps) {
   const [avatarLoaded, setAvatarLoaded] = useState(false);
   const [originalLoaded, setOriginalLoaded] = useState(false);
   const [processedLoaded, setProcessedLoaded] = useState(false);
+  const [isFeatured, setIsFeatured] = useState(profile.featured || false);
+  const [isHidden, setIsHidden] = useState(profile.hidden || false);
+  const [metadataUpdating, setMetadataUpdating] = useState(false);
+
+  // Update state when profile changes (e.g., navigation)
+  useEffect(() => {
+    setIsFeatured(profile.featured || false);
+    setIsHidden(profile.hidden || false);
+    
+    if (isDev) {
+      console.log('[ProfileView] Loaded profile metadata:', {
+        instagram_id: profile.instagram_id,
+        username: profile.username,
+        featured: profile.featured,
+        hidden: profile.hidden,
+      });
+    }
+  }, [profile.instagram_id, profile.featured, profile.hidden]);
 
   const processedKey = selectProcessedKey(profile);
   const hasProcessed = !!processedKey;
@@ -123,6 +143,43 @@ export function ProfileView({ profile }: ProfileViewProps) {
           displayOriginal,
         });
       }
+    }
+  };
+
+  const handleMetadataUpdate = async (field: 'featured' | 'hidden', value: boolean) => {
+    if (!isDev) return;
+    
+    setMetadataUpdating(true);
+    try {
+      const response = await fetch('/api/profile/metadata', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          instagram_id: profile.instagram_id,
+          field,
+          value,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update metadata');
+      }
+
+      const result = await response.json();
+      
+      if (field === 'featured') {
+        setIsFeatured(value);
+      } else {
+        setIsHidden(value);
+      }
+
+      console.log('[ProfileView] Metadata updated:', result);
+      alert(`Successfully ${value ? 'set' : 'removed'} ${field} flag. Refresh the homepage to see changes.`);
+    } catch (error) {
+      console.error('[ProfileView] Failed to update metadata:', error);
+      alert('Failed to update metadata. Check console for details.');
+    } finally {
+      setMetadataUpdating(false);
     }
   };
 
@@ -252,6 +309,43 @@ export function ProfileView({ profile }: ProfileViewProps) {
           {profile.biography || 'No biography.'}
         </p>
       </div>
+
+      {isDev && (
+        <div className="rounded-lg bg-purple-50 dark:bg-purple-950 p-4 shrink-0 border-2 border-purple-500">
+          <h3 className="mb-3 text-base font-semibold text-purple-700 dark:text-purple-300">
+            Dev Tools (Hidden in Production)
+          </h3>
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={() => handleMetadataUpdate('featured', !isFeatured)}
+              disabled={metadataUpdating}
+              className={`flex items-center justify-center gap-2 rounded-lg py-3 text-sm font-semibold transition-colors ${
+                isFeatured
+                  ? 'bg-yellow-500 text-white hover:bg-yellow-600'
+                  : 'bg-neutral-200 text-foreground hover:bg-neutral-300 dark:bg-neutral-800 dark:hover:bg-neutral-700'
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
+            >
+              <Star className={`h-4 w-4 ${isFeatured ? 'fill-current' : ''}`} />
+              {isFeatured ? 'Remove Featured' : 'Mark as Featured'}
+            </button>
+            <button
+              onClick={() => handleMetadataUpdate('hidden', !isHidden)}
+              disabled={metadataUpdating}
+              className={`flex items-center justify-center gap-2 rounded-lg py-3 text-sm font-semibold transition-colors ${
+                isHidden
+                  ? 'bg-red-500 text-white hover:bg-red-600'
+                  : 'bg-neutral-200 text-foreground hover:bg-neutral-300 dark:bg-neutral-800 dark:hover:bg-neutral-700'
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
+            >
+              <EyeOff className="h-4 w-4" />
+              {isHidden ? 'Unhide Profile' : 'Hide Profile'}
+            </button>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+              Featured: Show on homepage. Hidden: Exclude from homepage. Changes require homepage refresh.
+            </p>
+          </div>
+        </div>
+      )}
       
       {config.features.showProfileStats && (
         <div className="hidden sm:grid grid-cols-3 gap-4 text-center">

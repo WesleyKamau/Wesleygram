@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Profile } from '@/lib/profiles';
 import { ProfileCarouselRowDesktop } from './ProfileCarouselRowDesktop';
-import { HOME_PREVIEW_TITLE } from '@/lib/constants';
+import { HOME_PREVIEW_TITLE, MIN_FEATURED_PROFILES } from '@/lib/constants';
 import { filterHomepageProfiles, splitIntoRows } from '@/lib/homepage';
 
 interface HomePreviewDesktopProps {
@@ -21,7 +21,7 @@ export function HomePreviewDesktop({ profiles }: HomePreviewDesktopProps) {
     const shuffled = filterHomepageProfiles({
       profiles,
       bypassFilter,
-      minFeatured: 4,
+      minFeatured: MIN_FEATURED_PROFILES,
     });
     
     // Take 90 profiles and split evenly into 3 rows (30 each) for desktop

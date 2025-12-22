@@ -66,18 +66,18 @@ function computeScore(profile: Profile, queryWords: string[]): number {
 }
 
 function compareProfiles(a: { profile: Profile; score: number }, b: { profile: Profile; score: number }): number {
-  // 1) Mutuals first
+  // 1) Search accuracy first - prioritize best matches
+  if (b.score !== a.score) return b.score - a.score;
+
+  // 2) Mutuals second
   const aMutual = a.profile.is_follower && a.profile.is_following;
   const bMutual = b.profile.is_follower && b.profile.is_following;
   if (aMutual !== bMutual) return aMutual ? -1 : 1;
 
-  // 2) Followers (I don't follow them) next
+  // 3) Followers (I don't follow them) next
   const aFollowerOnly = a.profile.is_follower && !a.profile.is_following;
   const bFollowerOnly = b.profile.is_follower && !b.profile.is_following;
   if (aFollowerOnly !== bFollowerOnly) return aFollowerOnly ? -1 : 1;
-
-  // 3) Search accuracy
-  if (b.score !== a.score) return b.score - a.score;
 
   // 4) People I follow (they don't follow me)
   const aFollowingOnly = !a.profile.is_follower && a.profile.is_following;

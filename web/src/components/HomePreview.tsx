@@ -6,6 +6,7 @@ import { ProfileCarouselRow } from './ProfileCarouselRow';
 import { HomePreviewDesktop } from './HomePreviewDesktop';
 import { HOME_PREVIEW_TITLE } from '@/lib/constants';
 import { filterHomepageProfiles, splitIntoRows } from '@/lib/homepage';
+import { MIN_FEATURED_PROFILES } from '@/lib/constants';
 
 interface HomePreviewProps {
   profiles: Profile[];
@@ -35,7 +36,7 @@ export function HomePreview({ profiles }: HomePreviewProps) {
     const shuffled = filterHomepageProfiles({
       profiles,
       bypassFilter,
-      minFeatured: 4,
+      minFeatured: MIN_FEATURED_PROFILES,
     });
     
     // Take 120 profiles and split evenly into 4 rows (30 each)
