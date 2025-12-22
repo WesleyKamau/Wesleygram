@@ -1,4 +1,4 @@
-import { getProcessedProfiles } from '@/lib/profiles';
+import { getProfiles } from '@/lib/profiles';
 import { Suspense } from 'react';
 import { Search } from '@/components/Search';
 import { Header } from '@/components/Header';
@@ -6,7 +6,7 @@ import { Footer } from '@/components/Footer';
 import { ErrorBanner } from '@/components/ErrorBanner';
 
 export default function Home() {
-  const profiles = getProcessedProfiles();
+  const profiles = getProfiles();
 
   return (
     <div className="flex h-svh flex-col bg-background text-foreground">

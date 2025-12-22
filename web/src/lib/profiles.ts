@@ -1,7 +1,9 @@
 import { ProfilesMetadata, Profile } from '@/types';
+import { selectProcessedKey } from '@/lib/images';
 export type { Profile };
 
 import metadataRaw from '@/data/profiles_metadata.json';
+import { searchRankProfiles } from '@/lib/search';
 
 const metadata = metadataRaw as unknown as ProfilesMetadata;
 
@@ -21,18 +23,20 @@ export function getProfiles(): Profile[] {
 }
 
 export function getProcessedProfiles(): Profile[] {
-  return getProfiles().filter((p) => p.v1_image_r2_key);
+  return getProfiles().filter((p) => !!selectProcessedKey(p));
 }
 
 export function getProfileById(id: string): Profile | undefined {
   return metadata.profiles[id];
 }
 
-export function searchProfiles(query: string): Profile[] {
-  const lowerQuery = query.toLowerCase();
-  return getProcessedProfiles().filter(
-    (p) =>
-      p.username.toLowerCase().includes(lowerQuery) ||
-      p.full_name.toLowerCase().includes(lowerQuery)
+export function getProfileByUsername(username: string): Profile | undefined {
+  const normalizedUsername = username.toLowerCase();
+  return Object.values(metadata.profiles).find(
+    (p) => p.username.toLowerCase() === normalizedUsername
   );
+}
+
+export function searchProfiles(query: string): Profile[] {
+  return searchRankProfiles(getProfiles(), query);
 }

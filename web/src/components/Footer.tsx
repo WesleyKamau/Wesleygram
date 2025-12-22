@@ -11,7 +11,7 @@ export function Footer() {
         window.sessionStorage.setItem('from-search', '1');
       }
     } catch {}
-    router.push('/profile/290944620');
+    router.push('/290944620');
   };
 
   return (

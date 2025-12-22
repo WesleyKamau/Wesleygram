@@ -4,6 +4,8 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { Download, Eye, AlertTriangle } from 'lucide-react';
 import { Profile, getImageUrl } from '@/lib/profiles';
+import { selectProcessedKey } from '@/lib/images';
+import { Checkmark } from './Checkmark';
 import { config } from '@/lib/config';
 import Skeleton from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
@@ -18,12 +20,12 @@ export function ProfileView({ profile }: ProfileViewProps) {
   const [originalLoaded, setOriginalLoaded] = useState(false);
   const [processedLoaded, setProcessedLoaded] = useState(false);
 
-  const hasProcessed = !!profile.v1_image_r2_key;
+  const processedKey = selectProcessedKey(profile);
+  const hasProcessed = !!processedKey;
   const displayOriginal = showOriginal || !hasProcessed;
-
   const imageUrl = displayOriginal
     ? getImageUrl(profile.original_image_r2_key)
-    : getImageUrl(profile.v1_image_r2_key);
+    : getImageUrl(processedKey);
 
   const currentImageLoaded = displayOriginal ? originalLoaded : processedLoaded;
 
@@ -38,12 +40,13 @@ export function ProfileView({ profile }: ProfileViewProps) {
       imageUrl: imageUrl.substring(0, 100), // Log first 100 chars to avoid sensitive data
       original_image_r2_key: profile.original_image_r2_key,
       v1_image_r2_key: profile.v1_image_r2_key,
+      v2_image_r2_key: profile.v2_image_r2_key,
     });
   }
 
   const handleDownload = async () => {
     try {
-      const key = displayOriginal ? profile.original_image_r2_key : profile.v1_image_r2_key;
+      const key = displayOriginal ? profile.original_image_r2_key : processedKey;
       
       if (!key) {
         if (process.env.NODE_ENV !== 'production') {
@@ -124,9 +127,9 @@ export function ProfileView({ profile }: ProfileViewProps) {
   };
 
   // Use R2 image for preview photo to avoid Instagram blocking
-  const previewImageUrl = profile.original_image_r2_key 
+  const previewImageUrl = profile.original_image_r2_key
     ? getImageUrl(profile.original_image_r2_key)
-    : getImageUrl(profile.v1_image_r2_key);
+    : (processedKey ? getImageUrl(processedKey) : profile.profile_pic_url);
 
   return (
     <div className="flex w-full max-w-md flex-col gap-4">
@@ -152,17 +155,13 @@ export function ProfileView({ profile }: ProfileViewProps) {
           />
         </div>
         <div className="flex flex-col">
-          {profile.instagram_id === '290944620' ? (
-            <>
-              <h2 className="text-xl font-bold text-foreground" title={`@${profile.username}`}>@{profile.username}</h2>
-              <p className="text-sm text-neutral-500 dark:text-neutral-400">Wesley</p>
-            </>
-          ) : (
-            <>
-              <h2 className="text-xl font-bold text-foreground">{profile.username}</h2>
-              <p className="text-sm text-neutral-500 dark:text-neutral-400">{profile.full_name}</p>
-            </>
-          )}
+          <h2 className="flex items-center gap-2 text-xl font-bold text-foreground">
+            {profile.username}
+            {profile.is_verified && (
+              <Checkmark size={20} />
+            )}
+          </h2>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">{profile.full_name}</p>
         </div>
       </div>
 
@@ -202,7 +201,7 @@ export function ProfileView({ profile }: ProfileViewProps) {
         />
         {hasProcessed && (
           <Image
-            src={getImageUrl(profile.v1_image_r2_key)}
+            src={getImageUrl(processedKey)}
             alt={profile.username}
             fill
             className={`object-cover transition-all duration-500 ease-in-out ${
@@ -257,15 +256,15 @@ export function ProfileView({ profile }: ProfileViewProps) {
       {config.features.showProfileStats && (
         <div className="hidden sm:grid grid-cols-3 gap-4 text-center">
           <div>
-            <div className="font-bold text-foreground">{profile.post_count}</div>
+            <div className="font-bold text-foreground">{profile.post_count.toLocaleString()}</div>
             <div className="text-xs text-neutral-500 dark:text-neutral-400">Posts</div>
           </div>
           <div>
-            <div className="font-bold text-foreground">{profile.follower_count}</div>
+            <div className="font-bold text-foreground">{profile.follower_count.toLocaleString()}</div>
             <div className="text-xs text-neutral-500 dark:text-neutral-400">Followers</div>
           </div>
           <div>
-            <div className="font-bold text-foreground">{profile.following_count}</div>
+            <div className="font-bold text-foreground">{profile.following_count.toLocaleString()}</div>
             <div className="text-xs text-neutral-500 dark:text-neutral-400">Following</div>
           </div>
         </div>

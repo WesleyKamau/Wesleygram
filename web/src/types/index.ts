@@ -22,9 +22,12 @@ export interface Profile {
   r2_original_upload_status: string;
   r2_original_error: string | null;
   has_people: boolean;
-  v1_image_r2_key?: string;
-  v1_error?: string | null;
-  v1_processed_at?: string;
+  v1_image_r2_key: string | null;
+  v1_error: string | null;
+  v1_processed_at: string | null;
+  v2_image_r2_key: string | null;
+  v2_error: string | null;
+  v2_processed_at: string | null;
 }
 
 export interface ProfilesMetadata {

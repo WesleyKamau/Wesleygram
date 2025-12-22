@@ -2,11 +2,13 @@
 
 import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
 import Image from 'next/image';
 import { Instagram, ArrowLeft, Search as SearchIcon } from 'lucide-react';
 import { Profile, getImageUrl } from '@/lib/profiles';
+import { selectProcessedKey } from '@/lib/images';
+import { searchRankProfiles } from '@/lib/search';
 import { PROFILE_PREVIEW_SIZE } from '@/lib/constants';
+import { Checkmark } from './Checkmark';
 import Skeleton from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
 
@@ -19,140 +21,70 @@ function SearchContent({ profiles }: SearchPageClientProps) {
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get('q') || '';
   const [query, setQuery] = useState(initialQuery);
+  const [debouncedQuery, setDebouncedQuery] = useState(initialQuery);
   const [results, setResults] = useState<Profile[]>([]);
   const [loadedAvatars, setLoadedAvatars] = useState<Record<string, boolean>>({});
   const inputRef = useRef<HTMLInputElement>(null);
+  const [canGoBack, setCanGoBack] = useState(false);
+  const debounceTimerRef = useRef<NodeJS.Timeout>();
 
   useEffect(() => {
     // Focus input on mount
     inputRef.current?.focus();
   }, []);
 
-  // Update URL when query changes to keep state in sync
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setCanGoBack(window.history.length > 1);
+    }
+  }, []);
+
+  // Debounce the query to avoid lag on rapid keystrokes
+  useEffect(() => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    
+    debounceTimerRef.current = setTimeout(() => {
+      setDebouncedQuery(query);
+    }, 150); // 150ms debounce
+
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [query]);
+
+  // Update URL when debounced query changes to keep state in sync
   useEffect(() => {
     const currentQuery = searchParams.get('q') || '';
-    if (query !== currentQuery) {
-      if (query) {
-        router.replace(`/search?q=${encodeURIComponent(query)}`, { scroll: false });
+    if (debouncedQuery !== currentQuery) {
+      if (debouncedQuery) {
+        router.replace(`/search?q=${encodeURIComponent(debouncedQuery)}`, { scroll: false });
       } else {
         router.replace('/search', { scroll: false });
       }
     }
-  }, [query, searchParams, router]);
+  }, [debouncedQuery, searchParams, router]);
 
+  // Search only when debounced query changes
   useEffect(() => {
-    if (query.length > 0) {
-      const lowerQuery = query.toLowerCase().trim();
-      const queryWords = lowerQuery.split(/\s+/).filter(w => w.length > 0);
-      
-      const scored = profiles
-        .map((p) => {
-          const username = p.username.toLowerCase();
-          const usernameClean = username.replace(/[_.0-9]/g, '');
-          const fullName = p.full_name.toLowerCase();
-          const combined = `${username} ${usernameClean} ${fullName}`;
-          let score = 0;
-
-          if (queryWords.length === 1) {
-            const word = queryWords[0];
-            
-            if (username === word) score += 1000;
-            if (fullName === word) score += 900;
-            if (username.startsWith(word)) score += 500;
-            if (usernameClean.startsWith(word)) score += 450;
-            if (fullName.startsWith(word)) score += 400;
-
-            if (username.includes(word)) {
-              score += 200 - username.indexOf(word);
-            }
-            if (usernameClean.includes(word)) {
-              score += 180 - usernameClean.indexOf(word);
-            }
-            if (fullName.includes(word)) {
-              score += 100 - fullName.indexOf(word);
-            }
-          } else {
-            let allMatch = true;
-            let matchScore = 0;
-            
-            for (const word of queryWords) {
-              const inUsername = username.includes(word);
-              const inUsernameClean = usernameClean.includes(word);
-              const inFullName = fullName.includes(word);
-              const inCombined = combined.includes(word);
-              
-              if (!inCombined) {
-                const fuzzyMatch = fuzzyContains(combined, word);
-                if (!fuzzyMatch) {
-                  allMatch = false;
-                  break;
-                } else {
-                  matchScore += 20;
-                }
-              } else {
-                if (inUsername) matchScore += 100;
-                else if (inUsernameClean) matchScore += 80;
-                else if (inFullName) matchScore += 60;
-              }
-            }
-            
-            if (allMatch) {
-              score = matchScore;
-              if (username.startsWith(queryWords[0]) || usernameClean.startsWith(queryWords[0])) {
-                score += 200;
-              }
-            }
-          }
-
-          return { profile: p, score };
-        })
-        .filter((item) => item.score > 0)
-        .sort((a, b) => {
-          // First: sort by match score
-          if (b.score !== a.score) return b.score - a.score;
-          
-          // Then: apply hierarchy
-          const aMutual = a.profile.is_follower && a.profile.is_following;
-          const bMutual = b.profile.is_follower && b.profile.is_following;
-          if (aMutual !== bMutual) return aMutual ? -1 : 1;
-          
-          // Then: followers (but not following)
-          const aFollower = a.profile.is_follower && !a.profile.is_following;
-          const bFollower = b.profile.is_follower && !b.profile.is_following;
-          if (aFollower !== bFollower) return aFollower ? -1 : 1;
-          
-          // Then: by follower count
-          if (b.profile.follower_count !== a.profile.follower_count) {
-            return b.profile.follower_count - a.profile.follower_count;
-          }
-          
-          // Finally: alphabetical by username
-          return a.profile.username.localeCompare(b.profile.username);
-        })
-        .map((item) => item.profile);
-
-      setResults(scored);
+    if (debouncedQuery.length > 0) {
+      const ranked = searchRankProfiles(profiles, debouncedQuery);
+      setResults(ranked);
     } else {
       setResults([]);
     }
-  }, [query, profiles]);
+  }, [debouncedQuery, profiles]);
   
-  function fuzzyContains(haystack: string, needle: string): boolean {
-    let hi = 0;
-    for (let ni = 0; ni < needle.length; ni++) {
-      const char = needle[ni];
-      const found = haystack.indexOf(char, hi);
-      if (found === -1) return false;
-      hi = found + 1;
-    }
-    return true;
-  }
+  // Scoring/sorting moved to shared util
 
   const handleSelect = (profile: Profile) => {
     try {
       sessionStorage.setItem('from-search', '1');
     } catch (e) {}
-    router.push(`/profile/${profile.instagram_id}`);
+    router.push(`/${profile.instagram_id}`);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -163,17 +95,26 @@ function SearchContent({ profiles }: SearchPageClientProps) {
     }
   };
 
+  const handleBack = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push('/');
+    }
+  };
+
   return (
     <div className="flex min-h-svh flex-col bg-background text-foreground">
       <header className="sticky top-0 z-50 w-full border-b border-neutral-200 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 dark:border-neutral-800">
         <div className="container flex h-16 items-center gap-4 px-4">
-          <Link
-            href="/"
+          <button
+            type="button"
+            onClick={handleBack}
             className="rounded-lg p-2 text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
-            aria-label="Back to home"
+            aria-label={canGoBack ? 'Go back' : 'Back to home'}
           >
             <ArrowLeft className="h-5 w-5" />
-          </Link>
+          </button>
           <div className="relative flex-1">
             <SearchIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
             <input
@@ -235,22 +176,25 @@ function SearchContent({ profiles }: SearchPageClientProps) {
                     )}
                     <Image
                       src={
-                        profile.v1_image_r2_key
-                          ? getImageUrl(profile.v1_image_r2_key)
+                        selectProcessedKey(profile)
+                          ? getImageUrl(selectProcessedKey(profile)!)
                           : profile.profile_pic_url
                       }
                       alt={profile.username}
                       fill
                       className={`object-cover ${loadedAvatars[profile.instagram_id] ? '' : 'invisible'}`}
-                      unoptimized={!!profile.v1_image_r2_key}
+                      unoptimized={!!selectProcessedKey(profile)}
                       onLoadingComplete={() =>
                         setLoadedAvatars((prev) => ({ ...prev, [profile.instagram_id]: true }))
                       }
                     />
                   </div>
                   <div className="flex min-w-0 flex-1 flex-col">
-                    <span className="truncate text-base font-semibold text-foreground">
+                    <span className="flex items-center gap-1 truncate text-base font-semibold text-foreground">
                       {profile.username}
+                      {profile.is_verified && (
+                        <Checkmark size={18} className="shrink-0" />
+                      )}
                     </span>
                     <span className="truncate text-sm text-neutral-500 dark:text-neutral-400">
                       {profile.full_name}

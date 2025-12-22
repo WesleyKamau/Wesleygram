@@ -1,4 +1,4 @@
-import { getProcessedProfiles } from '@/lib/profiles';
+import { getProfiles } from '@/lib/profiles';
 import { SearchPageClient } from '@/components/SearchPageClient';
 import type { Metadata } from 'next';
 
@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 };
 
 export default function SearchPage() {
-  const profiles = getProcessedProfiles();
+  const profiles = getProfiles();
 
   return <SearchPageClient profiles={profiles} />;
 }

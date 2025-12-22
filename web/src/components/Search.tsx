@@ -6,7 +6,10 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Search as SearchIcon } from 'lucide-react';
 import { Profile, getImageUrl } from '@/lib/profiles';
+import { selectProcessedKey } from '@/lib/images';
+import { searchRankProfiles } from '@/lib/search';
 import { PROFILE_PREVIEW_SIZE } from '@/lib/constants';
+import { Checkmark } from './Checkmark';
 import Skeleton from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
 
@@ -48,113 +51,8 @@ export function Search({ profiles }: SearchProps) {
 
   useEffect(() => {
     if (query.length > 0) {
-      const lowerQuery = query.toLowerCase().trim();
-      // Split query into words, filter empty strings
-      const queryWords = lowerQuery.split(/\s+/).filter(w => w.length > 0);
-      
-      // Score each profile based on match quality
-      const scored = profiles
-        .map((p) => {
-          const username = p.username.toLowerCase();
-          // Strip underscores, dots, numbers for matching
-          const usernameClean = username.replace(/[_.0-9]/g, '');
-          const fullName = p.full_name.toLowerCase();
-          // Combined searchable text
-          const combined = `${username} ${usernameClean} ${fullName}`;
-          let score = 0;
-
-          // Single word query - use original logic + fuzzy
-          if (queryWords.length === 1) {
-            const word = queryWords[0];
-            
-            // Exact matches get highest priority
-            if (username === word) score += 1000;
-            if (fullName === word) score += 900;
-
-            // Starts with query - very high priority
-            if (username.startsWith(word)) score += 500;
-            if (usernameClean.startsWith(word)) score += 450;
-            if (fullName.startsWith(word)) score += 400;
-
-            // Username contains query - medium priority
-            if (username.includes(word)) {
-              score += 200 - username.indexOf(word);
-            }
-            // Clean username contains (catches "jaywill" from "_jaywill25._")
-            if (usernameClean.includes(word)) {
-              score += 180 - usernameClean.indexOf(word);
-            }
-
-            // Full name contains query - lower priority
-            if (fullName.includes(word)) {
-              score += 100 - fullName.indexOf(word);
-            }
-          } else {
-            // Multi-word query - all words must match somewhere
-            let allMatch = true;
-            let matchScore = 0;
-            
-            for (const word of queryWords) {
-              const inUsername = username.includes(word);
-              const inUsernameClean = usernameClean.includes(word);
-              const inFullName = fullName.includes(word);
-              const inCombined = combined.includes(word);
-              
-              if (!inCombined) {
-                // Try fuzzy: check if letters appear in sequence
-                const fuzzyMatch = fuzzyContains(combined, word);
-                if (!fuzzyMatch) {
-                  allMatch = false;
-                  break;
-                } else {
-                  matchScore += 20; // Fuzzy match gets lower score
-                }
-              } else {
-                // Direct match scoring
-                if (inUsername) matchScore += 100;
-                else if (inUsernameClean) matchScore += 80;
-                else if (inFullName) matchScore += 60;
-              }
-            }
-            
-            if (allMatch) {
-              score = matchScore;
-              // Bonus if username starts with first query word
-              if (username.startsWith(queryWords[0]) || usernameClean.startsWith(queryWords[0])) {
-                score += 200;
-              }
-            }
-          }
-
-          return { profile: p, score };
-        })
-        .filter((item) => item.score > 0) // Only include matches
-        .sort((a, b) => {
-          // First: sort by match score
-          if (b.score !== a.score) return b.score - a.score;
-          
-          // Then: apply hierarchy
-          const aMutual = a.profile.is_follower && a.profile.is_following;
-          const bMutual = b.profile.is_follower && b.profile.is_following;
-          if (aMutual !== bMutual) return aMutual ? -1 : 1;
-          
-          // Then: followers (but not following)
-          const aFollower = a.profile.is_follower && !a.profile.is_following;
-          const bFollower = b.profile.is_follower && !b.profile.is_following;
-          if (aFollower !== bFollower) return aFollower ? -1 : 1;
-          
-          // Then: by follower count
-          if (b.profile.follower_count !== a.profile.follower_count) {
-            return b.profile.follower_count - a.profile.follower_count;
-          }
-          
-          // Finally: alphabetical by username
-          return a.profile.username.localeCompare(b.profile.username);
-        })
-        .slice(0, 10) // Limit to 10 results
-        .map((item) => item.profile);
-
-      setResults(scored);
+      const ranked = searchRankProfiles(profiles, query, 10);
+      setResults(ranked);
       setIsOpen(true);
     } else {
       setResults([]);
@@ -162,17 +60,7 @@ export function Search({ profiles }: SearchProps) {
     }
   }, [query, profiles]);
   
-  // Fuzzy match: checks if all chars of needle appear in haystack in order
-  function fuzzyContains(haystack: string, needle: string): boolean {
-    let hi = 0;
-    for (let ni = 0; ni < needle.length; ni++) {
-      const char = needle[ni];
-      const found = haystack.indexOf(char, hi);
-      if (found === -1) return false;
-      hi = found + 1;
-    }
-    return true;
-  }
+  // Scoring/sorting moved to shared util
 
   const handleSelect = (profile: Profile) => {
     // Blur the input to prevent zoom persistence on mobile
@@ -187,7 +75,7 @@ export function Search({ profiles }: SearchProps) {
     }
     // Scroll to top to reset any zoom
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    router.push(`/profile/${profile.instagram_id}`);
+    router.push(`/${profile.instagram_id}`);
     setIsOpen(false);
     setQuery('');
   };
@@ -261,22 +149,25 @@ export function Search({ profiles }: SearchProps) {
                   )}
                   <Image
                     src={
-                      profile.v1_image_r2_key
-                        ? getImageUrl(profile.v1_image_r2_key)
+                      selectProcessedKey(profile)
+                        ? getImageUrl(selectProcessedKey(profile)!)
                         : profile.profile_pic_url
                     }
                     alt={profile.username}
                     fill
                     className={`object-cover ${loadedAvatars[profile.instagram_id] ? '' : 'invisible'}`}
-                    unoptimized={!!profile.v1_image_r2_key}
+                    unoptimized={!!selectProcessedKey(profile)}
                     onLoadingComplete={() =>
                       setLoadedAvatars((prev) => ({ ...prev, [profile.instagram_id]: true }))
                     }
                   />
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-sm font-semibold text-foreground">
+                  <span className="flex items-center gap-1 text-sm font-semibold text-foreground">
                     {profile.username}
+                    {profile.is_verified && (
+                      <Checkmark size={16} />
+                    )}
                   </span>
                   <span className="text-xs text-neutral-500 dark:text-neutral-400">
                     {profile.full_name}
