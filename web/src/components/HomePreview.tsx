@@ -5,6 +5,7 @@ import { Profile } from '@/lib/profiles';
 import { ProfileCarouselRow } from './ProfileCarouselRow';
 import { HomePreviewDesktop } from './HomePreviewDesktop';
 import { HOME_PREVIEW_TITLE } from '@/lib/constants';
+import { filterHomepageProfiles, splitIntoRows } from '@/lib/homepage';
 
 interface HomePreviewProps {
   profiles: Profile[];
@@ -27,17 +28,19 @@ export function HomePreview({ profiles }: HomePreviewProps) {
   }, []);
 
   useEffect(() => {
-    // Get random profiles with processed images
-    const processedProfiles = profiles.filter(p => p.v2_image_r2_key || p.v1_image_r2_key);
-    const shuffled = [...processedProfiles].sort(() => Math.random() - 0.5);
+    // Check for bypass filter parameter
+    const params = new URLSearchParams(window.location.search);
+    const bypassFilter = params.get('bypass_filter') === 'true';
+
+    const shuffled = filterHomepageProfiles({
+      profiles,
+      bypassFilter,
+      minFeatured: 4,
+    });
     
     // Take 120 profiles and split evenly into 4 rows (30 each)
-    const row1 = shuffled.slice(0, 30);
-    const row2 = shuffled.slice(30, 60);
-    const row3 = shuffled.slice(60, 90);
-    const row4 = shuffled.slice(90, 120);
-    
-    setRowProfiles([row1, row2, row3, row4]);
+    const rows = splitIntoRows(shuffled, 4, 30);
+    setRowProfiles(rows);
   }, [profiles]);
 
   if (rowProfiles.length === 0 || rowProfiles.some(row => row.length === 0)) {

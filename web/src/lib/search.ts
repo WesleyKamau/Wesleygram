@@ -97,7 +97,10 @@ export function searchRankProfiles(profiles: Profile[], query: string, limit?: n
   const words = normalizeQuery(query);
   if (words.length === 0) return [];
 
-  const scored = profiles
+  // Filter out hidden profiles from search
+  const visibleProfiles = profiles.filter(p => !p.hidden);
+
+  const scored = visibleProfiles
     .map((p) => ({ profile: p, score: computeScore(p, words) }))
     .filter((item) => item.score > 0)
     .sort(compareProfiles)

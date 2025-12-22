@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Profile, getImageUrl } from '@/lib/profiles';
 import { selectProcessedKey } from '@/lib/images';
 import { Checkmark } from './Checkmark';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 
 interface ProfilePreviewCardDesktopProps {
   profile: Profile;
@@ -14,6 +14,7 @@ interface ProfilePreviewCardDesktopProps {
 export function ProfilePreviewCardDesktop({ profile }: ProfilePreviewCardDesktopProps) {
   const router = useRouter();
   const [imageLoaded, setImageLoaded] = useState(false);
+  const startPos = useRef({ x: 0, y: 0 });
   
   const processedKey = selectProcessedKey(profile);
   const imageUrl = processedKey 
@@ -22,25 +23,18 @@ export function ProfilePreviewCardDesktop({ profile }: ProfilePreviewCardDesktop
 
   const profileUrl = `/${profile.instagram_id}`;
 
+  const handleMouseDown = (e: React.MouseEvent) => {
+    startPos.current = { x: e.clientX, y: e.clientY };
+  };
+
   const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    // Only navigate if it's not a drag operation
-    if ((e.target as HTMLElement).closest('.embla__container')) {
-      const moveThreshold = 5; // pixels
-      const startX = e.clientX;
-      const startY = e.clientY;
-      
-      // Check if mouse moved significantly (indicates drag)
-      const handleMouseUp = (upEvent: MouseEvent) => {
-        const moveX = Math.abs(upEvent.clientX - startX);
-        const moveY = Math.abs(upEvent.clientY - startY);
-        
-        if (moveX < moveThreshold && moveY < moveThreshold) {
-          e.preventDefault();
-          router.push(profileUrl);
-        }
-      };
-      
-      document.addEventListener('mouseup', handleMouseUp, { once: true });
+    const moveThreshold = 5; // pixels
+    const moveX = Math.abs(e.clientX - startPos.current.x);
+    const moveY = Math.abs(e.clientY - startPos.current.y);
+    
+    // If moved significantly, it's a drag, so prevent navigation
+    if (moveX > moveThreshold || moveY > moveThreshold) {
+      e.preventDefault();
       return;
     }
     
@@ -51,6 +45,7 @@ export function ProfilePreviewCardDesktop({ profile }: ProfilePreviewCardDesktop
   return (
     <a
       href={profileUrl}
+      onMouseDown={handleMouseDown}
       onClick={handleClick}
       className="group flex flex-shrink-0 flex-col items-center gap-2 transition-all duration-300 hover:scale-105 hover:-translate-y-1 no-underline"
       style={{ width: '180px' }}

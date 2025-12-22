@@ -28,6 +28,8 @@ export interface Profile {
   v2_image_r2_key: string | null;
   v2_error: string | null;
   v2_processed_at: string | null;
+  featured?: boolean; // Curated profiles to show on homepage preview
+  hidden?: boolean; // Hide from homepage and search entirely
 }
 
 export interface ProfilesMetadata {
