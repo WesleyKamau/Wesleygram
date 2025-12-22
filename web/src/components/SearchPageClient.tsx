@@ -26,7 +26,7 @@ function SearchContent({ profiles }: SearchPageClientProps) {
   const [loadedAvatars, setLoadedAvatars] = useState<Record<string, boolean>>({});
   const inputRef = useRef<HTMLInputElement>(null);
   const [canGoBack, setCanGoBack] = useState(false);
-  const debounceTimerRef = useRef<NodeJS.Timeout>();
+  const debounceTimerRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
   useEffect(() => {
     // Focus input on mount

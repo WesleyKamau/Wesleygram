@@ -4,6 +4,7 @@ import { Search } from '@/components/Search';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { ErrorBanner } from '@/components/ErrorBanner';
+import { HomePreview } from '@/components/HomePreview';
 
 export default function Home() {
   const profiles = getProfiles();
@@ -20,12 +21,7 @@ export default function Home() {
             <Search profiles={profiles} />
           </div>
         </div>
-        <div className="flex flex-1 items-center justify-center px-4 py-8">
-          <div className="text-center text-neutral-400 dark:text-neutral-500">
-            <p className="text-sm">Look yourself up (or someone else)</p>
-            <p className="text-sm">Im still working on stuff to put here maybe liek a cool preview</p>
-          </div>
-        </div>
+        <HomePreview />
       </main>
       <Footer />
     </div>
