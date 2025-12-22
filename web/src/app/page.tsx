@@ -21,7 +21,7 @@ export default function Home() {
             <Search profiles={profiles} />
           </div>
         </div>
-        <HomePreview />
+        <HomePreview profiles={profiles} />
       </main>
       <Footer />
     </div>

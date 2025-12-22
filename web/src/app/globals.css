@@ -1,14 +1,14 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #000000;
-}
-
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-instagram);
+}
+
+:root {
+  --background: #ffffff;
+  --foreground: #000000;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -22,4 +22,31 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-instagram), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* Height-based responsive utilities */
+@media (max-height: 899px) {
+  .hide-on-short {
+    display: none !important;
+  }
+}
+
+@media (min-height: 900px) {
+  .show-on-tall {
+    display: block;
+  }
+  .tall-width {
+    width: 7.5rem;
+  }
+  .tall-size {
+    width: 7.5rem;
+    height: 7.5rem;
+  }
+  .tall-text {
+    font-size: 0.75rem;
+  }
+  .tall-icon {
+    width: 0.75rem;
+    height: 0.75rem;
+  }
 }
