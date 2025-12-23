@@ -75,6 +75,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <meta name="apple-mobile-web-app-title" content="Wesleygram" />
+      </head>
       <body className={`${instagramSans.variable} font-sans antialiased`}>
         <ToasterClient />
         {children}
