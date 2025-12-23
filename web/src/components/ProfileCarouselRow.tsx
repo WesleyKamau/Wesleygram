@@ -32,7 +32,7 @@ export function ProfileCarouselRow({ profiles, direction = 'forward', keyPrefix,
     ]
   );
 
-  const emblaApiRef = useRef(emblaApi);
+  const emblaApiRef = useRef<typeof emblaApi>(undefined);
 
   useEffect(() => {
     emblaApiRef.current = emblaApi;
