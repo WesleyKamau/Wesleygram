@@ -38,7 +38,7 @@ export function ProfileCarouselRowDesktop({ profiles, direction = 'forward', key
         emblaApi.destroy();
       }
     };
-  }, [emblaApi]);
+  }, []);
 
   const handleMouseLeave = useCallback(() => {
     if (!emblaApi) return;

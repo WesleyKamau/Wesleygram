@@ -39,7 +39,7 @@ export function ProfileCarouselRow({ profiles, direction = 'forward', keyPrefix,
         emblaApi.destroy();
       }
     };
-  }, [emblaApi]);
+  }, []);
 
   return (
     <div className={`w-full ${className}`} ref={emblaRef}>
