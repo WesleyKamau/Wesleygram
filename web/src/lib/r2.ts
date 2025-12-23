@@ -11,7 +11,7 @@ if (!R2_ENDPOINT || !R2_ACCESS_KEY || !R2_SECRET_KEY || !R2_BUCKET) {
 }
 
 export const r2Client = new S3Client({
-  region: 'auto',
+  region: 'us-east-1',
   endpoint: R2_ENDPOINT,
   credentials: {
     accessKeyId: R2_ACCESS_KEY || '',
