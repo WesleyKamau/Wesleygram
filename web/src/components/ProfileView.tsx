@@ -223,7 +223,7 @@ export function ProfileView({ profile }: ProfileViewProps) {
             href={instagramUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex flex-col w-fit py-1 px-2 -ml-2 rounded-lg active:bg-neutral-100 dark:active:bg-neutral-800 transition-colors cursor-pointer no-underline"
+            className="inline-flex flex-col w-fit py-1 px-2 -ml-2 rounded-lg active:bg-neutral-100 dark:active:bg-neutral-800 transition-colors duration-75 cursor-pointer no-underline"
           >
             <h2 className="flex items-center gap-2 text-xl font-bold text-foreground flex-wrap">
               <span className="break-all">{profile.username}</span>
