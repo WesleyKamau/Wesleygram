@@ -211,14 +211,14 @@ export function ProfileView({ profile }: ProfileViewProps) {
             onLoadingComplete={() => setAvatarLoaded(true)}
           />
         </div>
-        <div className="flex flex-col">
-          <h2 className="flex items-center gap-2 text-xl font-bold text-foreground">
-            {profile.username}
+        <div className="flex flex-col min-w-0 flex-1">
+          <h2 className="flex items-center gap-2 text-xl font-bold text-foreground flex-wrap">
+            <span className="break-all">{profile.username}</span>
             {profile.is_verified && (
-              <Checkmark size={20} />
+              <Checkmark size={20} className="shrink-0" />
             )}
           </h2>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">{profile.full_name}</p>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400 break-words">{profile.full_name}</p>
         </div>
       </div>
 

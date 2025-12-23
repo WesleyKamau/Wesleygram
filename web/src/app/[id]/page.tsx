@@ -1,7 +1,6 @@
 import { getProfileById, getProfileByUsername, getProfiles } from '@/lib/profiles';
 import { selectProcessedKey } from '@/lib/images';
 import { ProfilePageClient } from '@/components/ProfilePageClient';
-import { getPresignedUrl } from '@/lib/r2';
 import { redirect } from 'next/navigation';
 import type { Metadata } from 'next';
 
@@ -24,9 +23,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     };
   }
 
-  // Get the Wesley-ified image (prefer v2→v1), or fallback to original
+  // Use the API route for image URLs - this avoids blocking page render
   const imageKey = selectProcessedKey(profile) || profile.original_image_r2_key;
-  const imageUrl = imageKey ? await getPresignedUrl(imageKey) : null;
+  const imageUrl = imageKey ? `/api/image?key=${encodeURIComponent(imageKey)}` : null;
 
   // Easter egg for Wesley's profile
   const pageTitle = id === '290944620' 

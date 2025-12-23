@@ -13,11 +13,9 @@ export function PageTransition({ children }: PageTransitionProps) {
   const [shouldAnimate, setShouldAnimate] = useState(() => {
     if (typeof window === 'undefined') return false;
     try {
+      // Just peek at the flag, don't remove it yet to be safe with Strict Mode
       const flag = sessionStorage.getItem('from-search');
-      if (flag) {
-        sessionStorage.removeItem('from-search');
-        return true;
-      }
+      return !!flag;
     } catch (e) {
       // ignore
     }
@@ -25,42 +23,52 @@ export function PageTransition({ children }: PageTransitionProps) {
   });
 
   useEffect(() => {
-    // If navigation happens without flag, ensure we don't animate
-    setShouldAnimate((prev) => {
-      if (prev) return true;
+    // Remove the flag after we've decided to animate
+    if (shouldAnimate) {
       try {
-        const flag = sessionStorage.getItem('from-search');
-        if (flag) {
-          sessionStorage.removeItem('from-search');
-          return true;
-        }
+        sessionStorage.removeItem('from-search');
       } catch (e) {
-        return false;
+        // ignore
       }
-      return false;
-    });
+    }
+  }, [shouldAnimate]);
+
+  useEffect(() => {
+    // If navigation happens without flag, ensure we don't animate
+    // This handles cases where we might navigate within the same component instance
+    try {
+      const flag = sessionStorage.getItem('from-search');
+      if (flag) {
+        setShouldAnimate(true);
+        sessionStorage.removeItem('from-search');
+      }
+    } catch (e) {
+      // ignore
+    }
   }, [pathname]);
 
   if (!shouldAnimate) {
-    return <div className="h-full">{children}</div>;
+    return <div className="h-full w-full">{children}</div>;
   }
 
   return (
-    <AnimatePresence mode="wait">
-      <motion.div
-        key={pathname}
-        initial={{ x: '100%', opacity: 0 }}
-        animate={{ x: 0, opacity: 1 }}
-        exit={{ x: '-100%', opacity: 0 }}
-        transition={{
-          type: 'tween',
-          ease: 'easeInOut',
-          duration: 0.3,
-        }}
-        className="h-full"
-      >
-        {children}
-      </motion.div>
-    </AnimatePresence>
+    <div className="w-full overflow-hidden">
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={pathname}
+          initial={{ x: '100%', opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          exit={{ x: '-100%', opacity: 0 }}
+          transition={{
+            type: 'tween',
+            ease: 'easeInOut',
+            duration: 0.3,
+          }}
+          className="h-full w-full"
+        >
+          {children}
+        </motion.div>
+      </AnimatePresence>
+    </div>
   );
 }
