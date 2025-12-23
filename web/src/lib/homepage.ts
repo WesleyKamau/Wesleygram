@@ -4,6 +4,7 @@ interface FilterProfilesOptions {
   profiles: Profile[];
   bypassFilter?: boolean;
   minFeatured?: number;
+  targetRows?: number;
 }
 
 /**
@@ -17,6 +18,7 @@ export function filterHomepageProfiles({
   profiles,
   bypassFilter = false,
   minFeatured = 4,
+  targetRows = 4,
 }: FilterProfilesOptions): Profile[] {
   // Get profiles with processed images, excluding hidden
   let availableProfiles = profiles.filter(
@@ -32,8 +34,7 @@ export function filterHomepageProfiles({
       const shuffledFeatured = [...featuredProfiles].sort(() => Math.random() - 0.5);
       
       // Distribute profiles across rows so each row has distinct profiles
-      // that repeat within the row (target 4 rows of 30 profiles each = 120 total)
-      const targetRows = 4;
+      // that repeat within the row
       const profilesPerRow = 30;
       
       // Assign profiles to rows using round-robin distribution
