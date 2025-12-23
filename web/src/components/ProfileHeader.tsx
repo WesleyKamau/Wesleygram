@@ -12,7 +12,7 @@ interface ProfileHeaderProps {
 export function ProfileHeader({ onSearchClick, searchOpen }: ProfileHeaderProps) {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-neutral-200 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 dark:border-neutral-800">
-      <div className="container flex h-16 items-center justify-between px-4">
+      <div className="container mx-auto flex h-16 max-w-2xl items-center justify-between px-4">
         <Link href="/" className="flex items-center gap-2">
           <Instagram className="h-7 w-7 text-foreground" />
           <span className="text-2xl font-bold text-foreground">Wesleygram</span>

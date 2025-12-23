@@ -35,7 +35,7 @@ export function SearchOverlay({ isOpen, onClose, profiles }: SearchOverlayProps)
           transition={{ duration: 0.2, ease: 'easeInOut' }}
           className="overflow-hidden border-b border-neutral-200 bg-background dark:border-neutral-800"
         >
-          <div className="px-4 py-3">
+          <div className="mx-auto max-w-2xl px-4 py-3">
             <Search profiles={profiles} />
           </div>
         </motion.div>

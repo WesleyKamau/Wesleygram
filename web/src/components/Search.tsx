@@ -24,6 +24,7 @@ export function Search({ profiles }: SearchProps) {
   const [isOpen, setIsOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const anchorRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
   const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number; width: number }>({ top: 0, left: 0, width: 0 });
   const [loadedAvatars, setLoadedAvatars] = useState<Record<string, boolean>>({});
@@ -32,6 +33,26 @@ export function Search({ profiles }: SearchProps) {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (
+        anchorRef.current &&
+        !anchorRef.current.contains(target) &&
+        dropdownRef.current &&
+        !dropdownRef.current.contains(target)
+      ) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -119,6 +140,7 @@ export function Search({ profiles }: SearchProps) {
       {mounted && isOpen && results.length > 0 && createPortal(
         (
           <div
+            ref={dropdownRef}
             style={{
               position: 'fixed',
               top: dropdownPos.top,
