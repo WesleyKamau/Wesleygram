@@ -188,10 +188,17 @@ export function ProfileView({ profile }: ProfileViewProps) {
     ? getImageUrl(profile.original_image_r2_key)
     : (processedKey ? getImageUrl(processedKey) : profile.profile_pic_url);
 
+  const instagramUrl = `https://www.instagram.com/${profile.username}`;
+
   return (
     <div className="flex w-full max-w-md flex-col gap-4">
       <div className="flex items-center gap-4 shrink-0">
-        <div className="relative h-20 w-20 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800">
+        <a
+          href={instagramUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="relative h-20 w-20 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800 cursor-pointer transition-transform active:scale-95 lg:hover:scale-105"
+        >
           {!avatarLoaded && (
             <Skeleton
               height="100%"
@@ -210,15 +217,22 @@ export function ProfileView({ profile }: ProfileViewProps) {
             unoptimized
             onLoadingComplete={() => setAvatarLoaded(true)}
           />
-        </div>
+        </a>
         <div className="flex flex-col min-w-0 flex-1">
-          <h2 className="flex items-center gap-2 text-xl font-bold text-foreground flex-wrap">
-            <span className="break-all">{profile.username}</span>
-            {profile.is_verified && (
-              <Checkmark size={20} className="shrink-0" />
-            )}
-          </h2>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400 break-words">{profile.full_name}</p>
+          <a
+            href={instagramUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex flex-col w-fit py-1 px-2 -ml-2 rounded-lg active:bg-neutral-100 dark:active:bg-neutral-800 transition-colors cursor-pointer no-underline"
+          >
+            <h2 className="flex items-center gap-2 text-xl font-bold text-foreground flex-wrap">
+              <span className="break-all">{profile.username}</span>
+              {profile.is_verified && (
+                <Checkmark size={20} className="shrink-0" />
+              )}
+            </h2>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400 break-words">{profile.full_name}</p>
+          </a>
         </div>
       </div>
 
