@@ -88,4 +88,8 @@ credentials.json
 # Model files
 inference/models/
 
+# Downloaded featured images
+featured_images/
+collage_frames/
+
 LoRA Photos/
