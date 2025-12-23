@@ -5,7 +5,7 @@ import AutoScroll from 'embla-carousel-auto-scroll';
 import { Profile } from '@/lib/profiles';
 import { ProfilePreviewCard } from './ProfilePreviewCard';
 import { CAROUSEL_SCROLL_SPEED } from '@/lib/constants';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 interface ProfileCarouselRowProps {
   profiles: Profile[];
@@ -32,14 +32,20 @@ export function ProfileCarouselRow({ profiles, direction = 'forward', keyPrefix,
     ]
   );
 
+  const emblaApiRef = useRef<typeof emblaApi>(undefined);
+
+  useEffect(() => {
+    emblaApiRef.current = emblaApi;
+  }, [emblaApi]);
+
   // Cleanup on unmount to prevent memory leaks
   useEffect(() => {
     return () => {
-      if (emblaApi) {
-        emblaApi.destroy();
+      if (emblaApiRef.current) {
+        emblaApiRef.current.destroy();
       }
     };
-  }, [emblaApi]);
+  }, []);
 
   return (
     <div className={`w-full ${className}`} ref={emblaRef}>

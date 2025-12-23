@@ -5,7 +5,7 @@ import AutoScroll from 'embla-carousel-auto-scroll';
 import { Profile } from '@/lib/profiles';
 import { ProfilePreviewCardDesktop } from './ProfilePreviewCardDesktop';
 import { CAROUSEL_SCROLL_SPEED } from '@/lib/constants';
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 
 interface ProfileCarouselRowDesktopProps {
   profiles: Profile[];
@@ -31,14 +31,20 @@ export function ProfileCarouselRowDesktop({ profiles, direction = 'forward', key
     ]
   );
 
+  const emblaApiRef = useRef<typeof emblaApi>(undefined);
+
+  useEffect(() => {
+    emblaApiRef.current = emblaApi;
+  }, [emblaApi]);
+
   // Cleanup on unmount to prevent memory leaks
   useEffect(() => {
     return () => {
-      if (emblaApi) {
-        emblaApi.destroy();
+      if (emblaApiRef.current) {
+        emblaApiRef.current.destroy();
       }
     };
-  }, [emblaApi]);
+  }, []);
 
   const handleMouseLeave = useCallback(() => {
     if (!emblaApi) return;

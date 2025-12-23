@@ -13,9 +13,12 @@ export function PageTransition({ children }: PageTransitionProps) {
   const [shouldAnimate, setShouldAnimate] = useState(() => {
     if (typeof window === 'undefined') return false;
     try {
-      // Just peek at the flag, don't remove it yet to be safe with Strict Mode
       const flag = sessionStorage.getItem('from-search');
-      return !!flag;
+      if (flag) {
+        // Remove flag immediately after reading to prevent race conditions
+        sessionStorage.removeItem('from-search');
+        return true;
+      }
     } catch (e) {
       // ignore
     }
@@ -23,24 +26,13 @@ export function PageTransition({ children }: PageTransitionProps) {
   });
 
   useEffect(() => {
-    // Remove the flag after we've decided to animate
-    if (shouldAnimate) {
-      try {
-        sessionStorage.removeItem('from-search');
-      } catch (e) {
-        // ignore
-      }
-    }
-  }, [shouldAnimate]);
-
-  useEffect(() => {
-    // If navigation happens without flag, ensure we don't animate
-    // This handles cases where we might navigate within the same component instance
+    // Handle navigation to ensure animation state is correct
+    // Only update state if a flag is found on pathname change
     try {
       const flag = sessionStorage.getItem('from-search');
       if (flag) {
-        setShouldAnimate(true);
         sessionStorage.removeItem('from-search');
+        setShouldAnimate(true);
       }
     } catch (e) {
       // ignore
