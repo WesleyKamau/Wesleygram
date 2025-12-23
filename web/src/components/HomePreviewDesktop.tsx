@@ -35,7 +35,7 @@ export function HomePreviewDesktop({ profiles }: HomePreviewDesktopProps) {
   }
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-8 overflow-hidden py-12 max-w-[1600px] mx-auto">
+    <div className="flex flex-1 flex-col items-center justify-center gap-8 overflow-x-hidden overflow-y-visible py-12 w-full">
       <ProfileCarouselRowDesktop profiles={rowProfiles[0]} direction="forward" keyPrefix="desktop-row1" />
       
       <div className="text-center z-10">
