@@ -27,14 +27,12 @@ export function PageTransition({ children }: PageTransitionProps) {
 
   useEffect(() => {
     // Handle navigation to ensure animation state is correct
-    // Only check and update if pathname changes
+    // Only update state if a flag is found on pathname change
     try {
       const flag = sessionStorage.getItem('from-search');
       if (flag) {
         sessionStorage.removeItem('from-search');
         setShouldAnimate(true);
-      } else {
-        setShouldAnimate(false);
       }
     } catch (e) {
       // ignore
