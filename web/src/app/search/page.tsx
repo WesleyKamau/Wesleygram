@@ -10,5 +10,7 @@ export const metadata: Metadata = {
 export default function SearchPage() {
   const profiles = getProfiles();
 
-  return <SearchPageClient profiles={profiles} />;
+  return <div>
+    <SearchPageClient profiles={profiles} />
+  </div>;
 }

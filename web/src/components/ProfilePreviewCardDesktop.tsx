@@ -43,7 +43,7 @@ export function ProfilePreviewCardDesktop({ profile }: ProfilePreviewCardDesktop
       href={profileUrl}
       onMouseDown={handleMouseDown}
       onClick={handleClick}
-      prefetch={true}
+      prefetch={false}
       className="group flex flex-shrink-0 flex-col items-center gap-2 transition-all duration-300 hover:scale-105 hover:-translate-y-1 no-underline"
       style={{ width: '180px' }}
     >
