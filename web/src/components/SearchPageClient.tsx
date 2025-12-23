@@ -24,10 +24,13 @@ function SearchContent({ profiles }: SearchPageClientProps) {
   const [query, setQuery] = useState(initialQuery);
   const [debouncedQuery, setDebouncedQuery] = useState(initialQuery);
   const [results, setResults] = useState<Profile[]>([]);
+  const [isSearching, setIsSearching] = useState<boolean>(initialQuery.length > 0);
   const [loadedAvatars, setLoadedAvatars] = useState<Record<string, boolean>>({});
   const inputRef = useRef<HTMLInputElement>(null);
   const [canGoBack, setCanGoBack] = useState(false);
   const debounceTimerRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const [displayCount, setDisplayCount] = useState(20); // Initial number of results to show
+  const loadMoreRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Focus input on mount
@@ -39,6 +42,11 @@ function SearchContent({ profiles }: SearchPageClientProps) {
       setCanGoBack(window.history.length > 1);
     }
   }, []);
+
+  // Reset display count when query changes
+  useEffect(() => {
+    setDisplayCount(20);
+  }, [debouncedQuery]);
 
   // Debounce the query to avoid lag on rapid keystrokes
   useEffect(() => {
@@ -72,12 +80,33 @@ function SearchContent({ profiles }: SearchPageClientProps) {
   // Search only when debounced query changes
   useEffect(() => {
     if (debouncedQuery.length > 0) {
+      setIsSearching(true);
       const ranked = searchRankProfiles(profiles, debouncedQuery);
       setResults(ranked);
+      setIsSearching(false);
     } else {
       setResults([]);
+      setIsSearching(false);
     }
   }, [debouncedQuery, profiles]);
+
+  // Infinite scroll: load more results when sentinel is visible
+  useEffect(() => {
+    const sentinel = loadMoreRef.current;
+    if (!sentinel || results.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && displayCount < results.length) {
+          setDisplayCount((prev) => Math.min(prev + 20, results.length));
+        }
+      },
+      { rootMargin: '200px' }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [results.length, displayCount]);
   
   // Scoring/sorting moved to shared util
 
@@ -142,6 +171,54 @@ function SearchContent({ profiles }: SearchPageClientProps) {
                 Find profiles by username or name
               </p>
             </div>
+          ) : isSearching ? (
+            <div className="space-y-2">
+              <div className="mb-4">
+                <Skeleton 
+                  height={16} 
+                  width={180}
+                  baseColor="#d0d0d0"
+                  highlightColor="#e0e0e0"
+                />
+              </div>
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="flex w-full items-center gap-4 rounded-lg px-4 py-3">
+                  <Skeleton 
+                    circle 
+                    width={PROFILE_PREVIEW_SIZE} 
+                    height={PROFILE_PREVIEW_SIZE}
+                    baseColor="#d0d0d0"
+                    highlightColor="#e0e0e0"
+                  />
+                  <div className="flex min-w-0 flex-1 flex-col gap-2">
+                    <Skeleton 
+                      height={18} 
+                      width="35%"
+                      baseColor="#d0d0d0"
+                      highlightColor="#e0e0e0"
+                    />
+                    <Skeleton 
+                      height={16} 
+                      width="50%"
+                      baseColor="#d0d0d0"
+                      highlightColor="#e0e0e0"
+                    />
+                    <Skeleton 
+                      height={14} 
+                      width="85%"
+                      baseColor="#d0d0d0"
+                      highlightColor="#e0e0e0"
+                    />
+                    <Skeleton 
+                      height={14} 
+                      width="70%"
+                      baseColor="#d0d0d0"
+                      highlightColor="#e0e0e0"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : results.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <SearchIcon className="mb-4 h-16 w-16 text-neutral-300 dark:text-neutral-700" />
@@ -155,7 +232,7 @@ function SearchContent({ profiles }: SearchPageClientProps) {
               <p className="mb-4 text-sm text-neutral-500 dark:text-neutral-400">
                 {results.length} {results.length === 1 ? 'result' : 'results'} for "{query}"
               </p>
-              {results.map((profile) => (
+              {results.slice(0, displayCount).map((profile) => (
                 <a
                   key={profile.instagram_id}
                   href={`/${profile.instagram_id}`}
@@ -209,6 +286,15 @@ function SearchContent({ profiles }: SearchPageClientProps) {
                   </div>
                 </a>
               ))}
+              {/* Sentinel for infinite scroll */}
+              <div ref={loadMoreRef} className="h-px" />
+              {displayCount < results.length && (
+                <div className="py-4 text-center">
+                  <span className="text-sm text-neutral-500 dark:text-neutral-400">
+                    Loading more results...
+                  </span>
+                </div>
+              )}
             </div>
           )}
         </div>
