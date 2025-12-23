@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Profile, getImageUrl } from '@/lib/profiles';
 import { selectProcessedKey } from '@/lib/images';
 import { Checkmark } from './Checkmark';
@@ -12,7 +12,6 @@ interface ProfilePreviewCardProps {
 }
 
 export function ProfilePreviewCard({ profile }: ProfilePreviewCardProps) {
-  const router = useRouter();
   const [imageLoaded, setImageLoaded] = useState(false);
   
   const processedKey = selectProcessedKey(profile);
@@ -21,13 +20,19 @@ export function ProfilePreviewCard({ profile }: ProfilePreviewCardProps) {
     : profile.profile_pic_url;
 
   const handleClick = () => {
-    router.push(`/${profile.instagram_id}`);
+    try {
+      sessionStorage.setItem('from-search', '1');
+    } catch (e) {
+      // no-op if storage unavailable
+    }
   };
 
   return (
-    <button
+    <Link
+      href={`/${profile.instagram_id}`}
       onClick={handleClick}
-      className="group flex flex-shrink-0 flex-col items-center gap-1 transition-transform hover:scale-105 w-40 tall-width"
+      prefetch={true}
+      className="group flex flex-shrink-0 flex-col items-center gap-1 transition-transform hover:scale-105 w-40 tall-width no-underline"
     >
       <div className="relative h-40 w-40 tall-size overflow-hidden rounded-lg bg-neutral-200 dark:bg-neutral-800">
         <Image
@@ -50,6 +55,6 @@ export function ProfilePreviewCard({ profile }: ProfilePreviewCardProps) {
         </div>
         <p className="hidden md:block w-full truncate text-[11px] text-neutral-500 dark:text-neutral-400 sm:text-[10px]">{profile.full_name}</p>
       </div>
-    </button>
+    </Link>
   );
 }

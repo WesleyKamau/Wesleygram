@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Profile, getImageUrl } from '@/lib/profiles';
 import { selectProcessedKey } from '@/lib/images';
 import { Checkmark } from './Checkmark';
@@ -12,7 +12,6 @@ interface ProfilePreviewCardDesktopProps {
 }
 
 export function ProfilePreviewCardDesktop({ profile }: ProfilePreviewCardDesktopProps) {
-  const router = useRouter();
   const [imageLoaded, setImageLoaded] = useState(false);
   const startPos = useRef({ x: 0, y: 0 });
   
@@ -37,16 +36,14 @@ export function ProfilePreviewCardDesktop({ profile }: ProfilePreviewCardDesktop
       e.preventDefault();
       return;
     }
-    
-    e.preventDefault();
-    router.push(profileUrl);
   };
 
   return (
-    <a
+    <Link
       href={profileUrl}
       onMouseDown={handleMouseDown}
       onClick={handleClick}
+      prefetch={true}
       className="group flex flex-shrink-0 flex-col items-center gap-2 transition-all duration-300 hover:scale-105 hover:-translate-y-1 no-underline"
       style={{ width: '180px' }}
     >
@@ -72,6 +69,6 @@ export function ProfilePreviewCardDesktop({ profile }: ProfilePreviewCardDesktop
         </div>
         <p className="w-full truncate text-sm text-neutral-500 dark:text-neutral-400">{profile.full_name}</p>
       </div>
-    </a>
+    </Link>
   );
 }
