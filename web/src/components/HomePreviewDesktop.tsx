@@ -22,6 +22,7 @@ export function HomePreviewDesktop({ profiles }: HomePreviewDesktopProps) {
       profiles,
       bypassFilter,
       minFeatured: MIN_FEATURED_PROFILES,
+      targetRows: 3,
     });
     
     // Take 90 profiles and split evenly into 3 rows (30 each) for desktop

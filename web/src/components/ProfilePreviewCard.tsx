@@ -31,7 +31,7 @@ export function ProfilePreviewCard({ profile }: ProfilePreviewCardProps) {
     <Link
       href={`/${profile.instagram_id}`}
       onClick={handleClick}
-      prefetch={true}
+      prefetch={false}
       className="group flex flex-shrink-0 flex-col items-center gap-1 transition-transform hover:scale-105 w-40 tall-width no-underline"
     >
       <div className="relative h-40 w-40 tall-size overflow-hidden rounded-lg bg-neutral-200 dark:bg-neutral-800">

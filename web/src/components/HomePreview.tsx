@@ -37,6 +37,7 @@ export function HomePreview({ profiles }: HomePreviewProps) {
       profiles,
       bypassFilter,
       minFeatured: MIN_FEATURED_PROFILES,
+      targetRows: 4,
     });
     
     // Take 120 profiles and split evenly into 4 rows (30 each)
