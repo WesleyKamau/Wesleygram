@@ -19,17 +19,27 @@ export const r2Client = new S3Client({
   },
 });
 
+// Cache presigned URLs in memory (valid for 1 hour, refresh at 50 min)
+const urlCache = new Map<string, { url: string; expiresAt: number }>();
+const CACHE_TTL_MS = 50 * 60 * 1000; // 50 minutes (URLs expire at 60 min)
+
 export async function getPresignedUrl(key: string) {
   if (!key) return null;
-  
+
+  const cached = urlCache.get(key);
+  if (cached && Date.now() < cached.expiresAt) {
+    return cached.url;
+  }
+
   try {
     const command = new GetObjectCommand({
       Bucket: R2_BUCKET,
       Key: key,
     });
-    
+
     // Expires in 1 hour (3600 seconds)
     const url = await getSignedUrl(r2Client, command, { expiresIn: 3600 });
+    urlCache.set(key, { url, expiresAt: Date.now() + CACHE_TTL_MS });
     return url;
   } catch (error) {
     console.error('Error generating presigned URL:', error);

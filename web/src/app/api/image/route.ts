@@ -25,7 +25,11 @@ export async function GET(request: NextRequest) {
     }
 
     console.log('[Image API] Successfully generated presigned URL for key:', key);
-    return NextResponse.redirect(url);
+    return NextResponse.redirect(url, {
+      headers: {
+        'Cache-Control': 'private, max-age=3000, stale-while-revalidate=600',
+      },
+    });
   } catch (error) {
     console.error('[Image API] Error generating presigned URL:', {
       key,

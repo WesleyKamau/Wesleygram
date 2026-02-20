@@ -1,4 +1,4 @@
-import { getProfileById, getProfileByUsername, getProfiles } from '@/lib/profiles';
+import { getProfileById, getProfileByUsername } from '@/lib/profiles';
 import { selectProcessedKey } from '@/lib/images';
 import { ProfilePageClient } from '@/components/ProfilePageClient';
 import { redirect } from 'next/navigation';
@@ -64,7 +64,5 @@ export default async function ProfilePage({ params }: PageProps) {
     redirect('/?error=user-not-found');
   }
 
-  const allProfiles = getProfiles();
-
-  return <ProfilePageClient profile={profile} allProfiles={allProfiles} />;
+  return <ProfilePageClient profile={profile} />;
 }
