@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
+import { ThemeProvider } from '@/components/ThemeProvider';
 import { ToasterClient } from '@/components/ToasterClient';
 import { Analytics } from '@vercel/analytics/next';
 
@@ -75,14 +76,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <meta name="apple-mobile-web-app-title" content="Wesleygram" />
       </head>
       <body className={`${instagramSans.variable} font-sans antialiased`}>
-        <ToasterClient />
-        {children}
-        <Analytics />
+        <ThemeProvider>
+          <ToasterClient />
+          {children}
+          <Analytics />
+        </ThemeProvider>
       </body>
     </html>
   );
