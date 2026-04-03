@@ -3,18 +3,20 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { HomeProfile } from '@/lib/profiles';
-import { getProfileImageUrl } from '@/lib/images';
+import { getProfileImageUrl, WESLEY_ID } from '@/lib/images';
 import { Checkmark } from './Checkmark';
 import { useState } from 'react';
 
 interface ProfilePreviewCardProps {
   profile: HomeProfile;
+  priority?: boolean;
 }
 
-export function ProfilePreviewCard({ profile }: ProfilePreviewCardProps) {
+export function ProfilePreviewCard({ profile, priority = false }: ProfilePreviewCardProps) {
   const [imageLoaded, setImageLoaded] = useState(false);
   
   const { url: imageUrl, unoptimized } = getProfileImageUrl(profile);
+  const isWesley = profile.instagram_id === WESLEY_ID;
 
   const handleClick = () => {
     try {
@@ -30,7 +32,7 @@ export function ProfilePreviewCard({ profile }: ProfilePreviewCardProps) {
       onClick={handleClick}
       className="group flex flex-shrink-0 flex-col items-center gap-1 transition-transform hover:scale-105 w-40 tall-width no-underline"
     >
-      <div className="relative h-40 w-40 tall-size overflow-hidden rounded-lg bg-neutral-200 dark:bg-neutral-800">
+      <div className={`relative h-40 w-40 tall-size overflow-hidden rounded-lg bg-neutral-200 dark:bg-neutral-800 ${isWesley ? 'creator-glow' : ''}`}>
         <Image
           src={imageUrl}
           alt={profile.username}
@@ -40,6 +42,7 @@ export function ProfilePreviewCard({ profile }: ProfilePreviewCardProps) {
             imageLoaded ? 'opacity-100' : 'opacity-0'
           }`}
           unoptimized={unoptimized}
+          priority={priority}
           onLoad={() => setImageLoaded(true)}
         />
       </div>

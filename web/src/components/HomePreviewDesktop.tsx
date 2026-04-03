@@ -35,7 +35,7 @@ export function HomePreviewDesktop({ profiles }: HomePreviewDesktopProps) {
       targetRows: rowCount,
     });
 
-    const rows = splitIntoRows(shuffled, rowCount, 30);
+    const rows = splitIntoRows(shuffled, rowCount, 30, profiles);
     setRowProfiles(rows);
   }, [profiles, rowCount]);
 
@@ -46,14 +46,14 @@ export function HomePreviewDesktop({ profiles }: HomePreviewDesktopProps) {
   if (rowCount === 2) {
     // Tablet layout: 1 row above title, 1 row below
     return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-6 overflow-x-hidden overflow-y-visible py-6 w-full">
-        <ProfileCarouselRowDesktop profiles={rowProfiles[0]} direction="forward" keyPrefix="desktop-row1" />
+      <div className="flex flex-1 flex-col items-center justify-center gap-4 overflow-x-hidden py-4 w-full">
+        <ProfileCarouselRowDesktop profiles={rowProfiles[0]} direction="forward" keyPrefix="desktop-row1" cardSize={160} />
 
-        <div className="text-center z-10">
-          <h2 className="text-4xl font-bold text-foreground tracking-tight">{HOME_PREVIEW_TITLE}</h2>
+        <div className="text-center z-10 py-1">
+          <h2 className="text-3xl font-bold text-foreground tracking-tight">{HOME_PREVIEW_TITLE}</h2>
         </div>
 
-        <ProfileCarouselRowDesktop profiles={rowProfiles[1]} direction="backward" keyPrefix="desktop-row2" />
+        <ProfileCarouselRowDesktop profiles={rowProfiles[1]} direction="backward" keyPrefix="desktop-row2" cardSize={160} />
       </div>
     );
   }

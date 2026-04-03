@@ -39,9 +39,9 @@ export function HomePreview({ profiles }: HomePreviewProps) {
       minFeatured: MIN_FEATURED_PROFILES,
       targetRows: 4,
     });
-    
+
     // Take 120 profiles and split evenly into 4 rows (30 each)
-    const rows = splitIntoRows(shuffled, 4, 30);
+    const rows = splitIntoRows(shuffled, 4, 30, profiles);
     setRowProfiles(rows);
   }, [profiles]);
 

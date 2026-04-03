@@ -11,9 +11,10 @@ interface ProfileCarouselRowDesktopProps {
   profiles: HomeProfile[];
   direction?: 'forward' | 'backward';
   keyPrefix: string;
+  cardSize?: number;
 }
 
-export function ProfileCarouselRowDesktop({ profiles, direction = 'forward', keyPrefix }: ProfileCarouselRowDesktopProps) {
+export function ProfileCarouselRowDesktop({ profiles, direction = 'forward', keyPrefix, cardSize }: ProfileCarouselRowDesktopProps) {
   const [emblaRef, emblaApi] = useEmblaCarousel(
     { 
       loop: true,
@@ -59,7 +60,7 @@ export function ProfileCarouselRowDesktop({ profiles, direction = 'forward', key
       <div className="flex gap-6 pl-6 pr-6">
         {profiles.map((profile, index) => (
           <div key={`${keyPrefix}-${profile.instagram_id}-${index}`} className="flex-[0_0_auto]">
-            <ProfilePreviewCardDesktop profile={profile} />
+            <ProfilePreviewCardDesktop profile={profile} priority={index < 8} size={cardSize} />
           </div>
         ))}
       </div>

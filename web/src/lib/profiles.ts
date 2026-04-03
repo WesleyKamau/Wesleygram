@@ -43,12 +43,22 @@ export function getHomeProfiles(): HomeProfile[] {
 
 /** Returns only profiles eligible for the homepage carousel (featured + processed, not hidden) */
 export function getCarouselProfiles(): HomeProfile[] {
+  const WESLEY_ID = '290944620';
   const all = getHomeProfiles().filter(
-    (p) => !p.hidden && (p.v2_image_r2_key || p.v1_image_r2_key)
+    (p) => !p.hidden && (p.instagram_id === WESLEY_ID || p.v2_image_r2_key || p.v1_image_r2_key)
   );
   const featured = all.filter(p => p.featured);
   // Use featured if enough, otherwise fall back to all
-  return featured.length >= 4 ? featured : all;
+  // Always include Wesley even if he's not featured
+  if (featured.length >= 4) {
+    const hasWesley = featured.some(p => p.instagram_id === WESLEY_ID);
+    if (!hasWesley) {
+      const wesley = all.find(p => p.instagram_id === WESLEY_ID);
+      if (wesley) featured.push(wesley);
+    }
+    return featured;
+  }
+  return all;
 }
 
 export function getProcessedProfiles(): Profile[] {

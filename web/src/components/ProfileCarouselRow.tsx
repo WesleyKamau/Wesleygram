@@ -52,7 +52,7 @@ export function ProfileCarouselRow({ profiles, direction = 'forward', keyPrefix,
       <div className="flex gap-4 pl-4 pr-4">
         {profiles.map((profile, index) => (
           <div key={`${keyPrefix}-${profile.instagram_id}-${index}`} className="flex-[0_0_auto]">
-            <ProfilePreviewCard profile={profile} />
+            <ProfilePreviewCard profile={profile} priority={index < 8} />
           </div>
         ))}
       </div>
