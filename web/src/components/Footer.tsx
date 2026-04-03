@@ -23,7 +23,7 @@ export function Footer() {
             type="button"
             onClick={handleClick}
             className="font-medium underline decoration-neutral-400 underline-offset-2 hover:text-neutral-900 hover:decoration-neutral-900 dark:hover:text-neutral-200 dark:hover:decoration-neutral-200"
-            aria-label="View Wesley's profile"
+            aria-label="Wesley Kamau – View profile"
           >
             Wesley Kamau
           </button>

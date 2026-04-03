@@ -1,13 +1,15 @@
-import { getProfiles } from '@/lib/profiles';
+import { getCarouselProfiles } from '@/lib/profiles';
 import { Suspense } from 'react';
+import dynamic from 'next/dynamic';
 import { Search } from '@/components/Search';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { ErrorBanner } from '@/components/ErrorBanner';
-import { HomePreview } from '@/components/HomePreview';
+
+const HomePreview = dynamic(() => import('@/components/HomePreview').then(m => ({ default: m.HomePreview })));
 
 export default function Home() {
-  const profiles = getProfiles();
+  const profiles = getCarouselProfiles();
 
   return (
     <div className="flex h-svh flex-col bg-background text-foreground">
@@ -18,7 +20,7 @@ export default function Home() {
         </Suspense>
         <div className="sticky top-0 z-10 border-b border-neutral-200 bg-background px-4 py-3 dark:border-neutral-800">
           <div className="mx-auto w-full max-w-2xl">
-            <Search profiles={profiles} />
+            <Search />
           </div>
         </div>
         <HomePreview profiles={profiles} />

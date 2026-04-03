@@ -1,23 +1,15 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect } from 'react';
 import { Search } from './Search';
-import { Profile } from '@/lib/profiles';
 
 interface SearchOverlayProps {
   isOpen: boolean;
   onClose: () => void;
-  profiles?: Profile[];
 }
 
-// Module-level cache so profiles are fetched once across all instances
-let cachedProfiles: Profile[] | null = null;
-
-export function SearchOverlay({ isOpen, onClose, profiles: profilesProp }: SearchOverlayProps) {
-  const [fetchedProfiles, setFetchedProfiles] = useState<Profile[]>(cachedProfiles || []);
-  const fetchedRef = useRef(false);
-
+export function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
   useEffect(() => {
     if (!isOpen) return;
 
@@ -31,23 +23,6 @@ export function SearchOverlay({ isOpen, onClose, profiles: profilesProp }: Searc
     return () => window.removeEventListener('keydown', handleEscape);
   }, [isOpen, onClose]);
 
-  // Lazy-fetch profiles when opened if not provided as a prop
-  useEffect(() => {
-    if (profilesProp || cachedProfiles || fetchedRef.current) return;
-    if (!isOpen) return;
-    fetchedRef.current = true;
-
-    fetch('/api/profiles')
-      .then((res) => res.json())
-      .then((data: Profile[]) => {
-        cachedProfiles = data;
-        setFetchedProfiles(data);
-      })
-      .catch(() => {});
-  }, [isOpen, profilesProp]);
-
-  const profiles = profilesProp || fetchedProfiles;
-
   return (
     <AnimatePresence>
       {isOpen && (
@@ -59,7 +34,7 @@ export function SearchOverlay({ isOpen, onClose, profiles: profilesProp }: Searc
           className="overflow-hidden border-b border-neutral-200 bg-background dark:border-neutral-800"
         >
           <div className="mx-auto max-w-2xl px-4 py-3">
-            <Search profiles={profiles} />
+            <Search />
           </div>
         </motion.div>
       )}

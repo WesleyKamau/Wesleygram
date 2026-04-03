@@ -2,22 +2,19 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { Profile, getImageUrl } from '@/lib/profiles';
-import { selectProcessedKey } from '@/lib/images';
+import { HomeProfile } from '@/lib/profiles';
+import { getProfileImageUrl } from '@/lib/images';
 import { Checkmark } from './Checkmark';
 import { useState } from 'react';
 
 interface ProfilePreviewCardProps {
-  profile: Profile;
+  profile: HomeProfile;
 }
 
 export function ProfilePreviewCard({ profile }: ProfilePreviewCardProps) {
   const [imageLoaded, setImageLoaded] = useState(false);
   
-  const processedKey = selectProcessedKey(profile);
-  const imageUrl = processedKey 
-    ? getImageUrl(processedKey)
-    : profile.profile_pic_url;
+  const { url: imageUrl, unoptimized } = getProfileImageUrl(profile);
 
   const handleClick = () => {
     try {
@@ -38,10 +35,11 @@ export function ProfilePreviewCard({ profile }: ProfilePreviewCardProps) {
           src={imageUrl}
           alt={profile.username}
           fill
+          sizes="160px"
           className={`object-cover transition-opacity duration-300 ${
             imageLoaded ? 'opacity-100' : 'opacity-0'
           }`}
-          unoptimized={!!processedKey}
+          unoptimized={unoptimized}
           onLoad={() => setImageLoaded(true)}
         />
       </div>

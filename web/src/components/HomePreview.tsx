@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Profile } from '@/lib/profiles';
+import { HomeProfile } from '@/lib/profiles';
 import { ProfileCarouselRow } from './ProfileCarouselRow';
 import { HomePreviewDesktop } from './HomePreviewDesktop';
 import { HOME_PREVIEW_TITLE } from '@/lib/constants';
@@ -9,11 +9,11 @@ import { filterHomepageProfiles, splitIntoRows } from '@/lib/homepage';
 import { MIN_FEATURED_PROFILES } from '@/lib/constants';
 
 interface HomePreviewProps {
-  profiles: Profile[];
+  profiles: HomeProfile[];
 }
 
 export function HomePreview({ profiles }: HomePreviewProps) {
-  const [rowProfiles, setRowProfiles] = useState<Profile[][]>([]);
+  const [rowProfiles, setRowProfiles] = useState<HomeProfile[][]>([]);
   const [isDesktop, setIsDesktop] = useState(false);
 
   useEffect(() => {

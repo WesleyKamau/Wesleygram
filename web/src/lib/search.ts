@@ -1,4 +1,4 @@
-import type { Profile } from '@/types';
+import type { HomeProfile } from '@/types';
 
 function normalizeQuery(query: string): string[] {
   return query.toLowerCase().trim().split(/\s+/).filter(Boolean);
@@ -15,7 +15,7 @@ function fuzzyContains(haystack: string, needle: string): boolean {
   return true;
 }
 
-function computeScore(profile: Profile, queryWords: string[]): number {
+function computeScore(profile: HomeProfile, queryWords: string[]): number {
   if (queryWords.length === 0) return 0;
 
   const username = profile.username.toLowerCase();
@@ -65,7 +65,7 @@ function computeScore(profile: Profile, queryWords: string[]): number {
   return score;
 }
 
-function compareProfiles(a: { profile: Profile; score: number }, b: { profile: Profile; score: number }): number {
+function compareProfiles(a: { profile: HomeProfile; score: number }, b: { profile: HomeProfile; score: number }): number {
   // 1) Search accuracy first - prioritize best matches
   if (b.score !== a.score) return b.score - a.score;
 
@@ -93,7 +93,7 @@ function compareProfiles(a: { profile: Profile; score: number }, b: { profile: P
   return a.profile.username.localeCompare(b.profile.username);
 }
 
-export function searchRankProfiles(profiles: Profile[], query: string, limit?: number): Profile[] {
+export function searchRankProfiles(profiles: HomeProfile[], query: string, limit?: number): HomeProfile[] {
   const words = normalizeQuery(query);
   if (words.length === 0) return [];
 

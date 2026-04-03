@@ -1,7 +1,8 @@
-import { Profile } from '@/types';
+import { HomeProfile } from '@/types';
+import { WESLEY_ID } from '@/lib/images';
 
 interface FilterProfilesOptions {
-  profiles: Profile[];
+  profiles: HomeProfile[];
   bypassFilter?: boolean;
   minFeatured?: number;
   targetRows?: number;
@@ -19,9 +20,9 @@ export function filterHomepageProfiles({
   bypassFilter = false,
   minFeatured = 4,
   targetRows = 4,
-}: FilterProfilesOptions): Profile[] {
+}: FilterProfilesOptions): HomeProfile[] {
   // Get profiles with processed images, excluding hidden
-  let availableProfiles = profiles.filter(
+  let availableProfiles: HomeProfile[] = profiles.filter(
     (p) => !p.hidden && (p.v2_image_r2_key || p.v1_image_r2_key)
   );
 
@@ -38,14 +39,14 @@ export function filterHomepageProfiles({
       const profilesPerRow = 30;
       
       // Assign profiles to rows using round-robin distribution
-      const rowAssignments: Profile[][] = Array(targetRows).fill(null).map(() => []);
+      const rowAssignments: HomeProfile[][] = Array(targetRows).fill(null).map(() => []);
       shuffledFeatured.forEach((profile, idx) => {
         const rowIndex = idx % targetRows;
         rowAssignments[rowIndex].push(profile);
       });
       
       // Fill each row by repeating its assigned profiles
-      const distributed: Profile[] = [];
+      const distributed: HomeProfile[] = [];
       for (let rowIdx = 0; rowIdx < targetRows; rowIdx++) {
         const rowProfiles = rowAssignments[rowIdx];
         if (rowProfiles.length === 0) continue;
@@ -70,14 +71,26 @@ export function filterHomepageProfiles({
 }
 
 /**
- * Splits profiles into rows for carousel display
+ * Splits profiles into rows for carousel display.
+ * Ensures Wesley appears once in every row at a random position.
  */
-export function splitIntoRows(profiles: Profile[], rowCount: number, profilesPerRow: number): Profile[][] {
-  const rows: Profile[][] = [];
+export function splitIntoRows(profiles: HomeProfile[], rowCount: number, profilesPerRow: number): HomeProfile[][] {
+  // Find Wesley in the full profile set
+  const wesley = profiles.find(p => p.instagram_id === WESLEY_ID);
+
+  const rows: HomeProfile[][] = [];
   for (let i = 0; i < rowCount; i++) {
     const start = i * profilesPerRow;
     const end = start + profilesPerRow;
-    rows.push(profiles.slice(start, end));
+    const row = profiles.slice(start, end);
+
+    // Ensure Wesley is in every row
+    if (wesley && !row.some(p => p.instagram_id === WESLEY_ID)) {
+      const insertAt = Math.floor(Math.random() * row.length);
+      row[insertAt] = wesley;
+    }
+
+    rows.push(row);
   }
   return rows;
 }

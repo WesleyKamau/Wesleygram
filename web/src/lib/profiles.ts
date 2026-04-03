@@ -1,6 +1,6 @@
-import { ProfilesMetadata, Profile } from '@/types';
+import { ProfilesMetadata, Profile, HomeProfile } from '@/types';
 import { selectProcessedKey } from '@/lib/images';
-export type { Profile };
+export type { Profile, HomeProfile };
 
 import metadataRaw from '@/data/profiles_metadata.json';
 import { searchRankProfiles } from '@/lib/search';
@@ -22,6 +22,35 @@ export function getProfiles(): Profile[] {
   return Object.values(metadata.profiles);
 }
 
+/** Returns slim profiles with only the fields needed for homepage and search */
+export function getHomeProfiles(): HomeProfile[] {
+  return Object.values(metadata.profiles).map(p => ({
+    instagram_id: p.instagram_id,
+    username: p.username,
+    full_name: p.full_name,
+    biography: p.biography,
+    is_verified: p.is_verified,
+    profile_pic_url: p.profile_pic_url,
+    v1_image_r2_key: p.v1_image_r2_key,
+    v2_image_r2_key: p.v2_image_r2_key,
+    featured: p.featured,
+    hidden: p.hidden,
+    is_follower: p.is_follower,
+    is_following: p.is_following,
+    follower_count: p.follower_count,
+  }));
+}
+
+/** Returns only profiles eligible for the homepage carousel (featured + processed, not hidden) */
+export function getCarouselProfiles(): HomeProfile[] {
+  const all = getHomeProfiles().filter(
+    (p) => !p.hidden && (p.v2_image_r2_key || p.v1_image_r2_key)
+  );
+  const featured = all.filter(p => p.featured);
+  // Use featured if enough, otherwise fall back to all
+  return featured.length >= 4 ? featured : all;
+}
+
 export function getProcessedProfiles(): Profile[] {
   return getProfiles().filter((p) => !!selectProcessedKey(p));
 }
@@ -38,5 +67,5 @@ export function getProfileByUsername(username: string): Profile | undefined {
 }
 
 export function searchProfiles(query: string): Profile[] {
-  return searchRankProfiles(getProfiles(), query);
+  return searchRankProfiles(getProfiles(), query) as Profile[];
 }

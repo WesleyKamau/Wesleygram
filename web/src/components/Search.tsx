@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Search as SearchIcon } from 'lucide-react';
-import { Profile, getImageUrl } from '@/lib/profiles';
-import { selectProcessedKey } from '@/lib/images';
+import { HomeProfile } from '@/lib/profiles';
+import { getProfileImageUrl } from '@/lib/images';
 import { searchRankProfiles } from '@/lib/search';
 import { PROFILE_PREVIEW_SIZE } from '@/lib/constants';
 import { Checkmark } from './Checkmark';
@@ -14,13 +14,12 @@ import Skeleton from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
 import { navigateOnPlainLeftClick } from '@/lib/links';
 
-interface SearchProps {
-  profiles: Profile[];
-}
+let cachedProfiles: HomeProfile[] | null = null;
 
-export function Search({ profiles }: SearchProps) {
+export function Search() {
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<Profile[]>([]);
+  const [profiles, setProfiles] = useState<HomeProfile[]>([]);
+  const [results, setResults] = useState<HomeProfile[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const anchorRef = useRef<HTMLDivElement>(null);
@@ -29,6 +28,21 @@ export function Search({ profiles }: SearchProps) {
   const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number; width: number }>({ top: 0, left: 0, width: 0 });
   const [loadedAvatars, setLoadedAvatars] = useState<Record<string, boolean>>({});
   const router = useRouter();
+
+  const loadProfiles = useCallback(async () => {
+    if (cachedProfiles) {
+      setProfiles(cachedProfiles);
+      return;
+    }
+    try {
+      const res = await fetch('/api/profiles');
+      const data = await res.json();
+      cachedProfiles = data;
+      setProfiles(data);
+    } catch {
+      // silently fail — search just won't work
+    }
+  }, []);
 
   useEffect(() => {
     setMounted(true);
@@ -81,10 +95,8 @@ export function Search({ profiles }: SearchProps) {
       setIsOpen(false);
     }
   }, [query, profiles]);
-  
-  // Scoring/sorting moved to shared util
 
-  const handleSelect = (profile: Profile) => {
+  const handleSelect = (profile: HomeProfile) => {
     // Blur the input to prevent zoom persistence on mobile
     if (inputRef.current) {
       inputRef.current.blur();
@@ -130,9 +142,16 @@ export function Search({ profiles }: SearchProps) {
           ref={inputRef}
           type="text"
           placeholder="Search"
+          aria-label="Search profiles"
           className="w-full rounded-lg bg-neutral-100 py-2 pl-10 pr-4 text-base text-foreground placeholder-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-300 dark:bg-neutral-900 dark:text-white dark:focus:ring-neutral-700"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            if (profiles.length === 0) loadProfiles();
+          }}
+          onFocus={() => {
+            if (profiles.length === 0) loadProfiles();
+          }}
           onKeyDown={handleKeyDown}
         />
       </div>
@@ -157,7 +176,7 @@ export function Search({ profiles }: SearchProps) {
                 className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-neutral-100 dark:hover:bg-neutral-800 no-underline"
                 onClick={(e) => navigateOnPlainLeftClick(e, () => handleSelect(profile))}
               >
-                <div 
+                <div
                   className="relative overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800"
                   style={{ width: PROFILE_PREVIEW_SIZE, height: PROFILE_PREVIEW_SIZE }}
                 >
@@ -171,20 +190,22 @@ export function Search({ profiles }: SearchProps) {
                       className="block h-full w-full"
                     />
                   )}
-                  <Image
-                    src={
-                      selectProcessedKey(profile)
-                        ? getImageUrl(selectProcessedKey(profile)!)
-                        : profile.profile_pic_url
-                    }
-                    alt={profile.username}
-                    fill
-                    className={`object-cover ${loadedAvatars[profile.instagram_id] ? '' : 'invisible'}`}
-                    unoptimized={!!selectProcessedKey(profile)}
-                    onLoadingComplete={() =>
-                      setLoadedAvatars((prev) => ({ ...prev, [profile.instagram_id]: true }))
-                    }
-                  />
+                  {(() => {
+                    const { url, unoptimized } = getProfileImageUrl(profile);
+                    return (
+                      <Image
+                        src={url}
+                        alt={profile.username}
+                        fill
+                        sizes="80px"
+                        className={`object-cover ${loadedAvatars[profile.instagram_id] ? '' : 'invisible'}`}
+                        unoptimized={unoptimized}
+                        onLoad={() =>
+                          setLoadedAvatars((prev) => ({ ...prev, [profile.instagram_id]: true }))
+                        }
+                      />
+                    );
+                  })()}
                 </div>
                 <div className="flex flex-col">
                   <span className="flex items-center gap-1 text-sm font-semibold text-foreground">

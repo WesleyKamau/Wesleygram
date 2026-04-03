@@ -2,13 +2,13 @@
 
 import useEmblaCarousel from 'embla-carousel-react';
 import AutoScroll from 'embla-carousel-auto-scroll';
-import { Profile } from '@/lib/profiles';
+import { HomeProfile } from '@/lib/profiles';
 import { ProfilePreviewCardDesktop } from './ProfilePreviewCardDesktop';
 import { CAROUSEL_SCROLL_SPEED } from '@/lib/constants';
 import { useCallback, useEffect, useRef } from 'react';
 
 interface ProfileCarouselRowDesktopProps {
-  profiles: Profile[];
+  profiles: HomeProfile[];
   direction?: 'forward' | 'backward';
   keyPrefix: string;
 }

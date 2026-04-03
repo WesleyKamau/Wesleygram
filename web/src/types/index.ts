@@ -32,6 +32,23 @@ export interface Profile {
   hidden?: boolean; // Hide from homepage and search entirely
 }
 
+/** Slim profile type with only fields needed for homepage and search */
+export type HomeProfile = Pick<Profile,
+  | 'instagram_id'
+  | 'username'
+  | 'full_name'
+  | 'biography'
+  | 'is_verified'
+  | 'profile_pic_url'
+  | 'v1_image_r2_key'
+  | 'v2_image_r2_key'
+  | 'featured'
+  | 'hidden'
+  | 'is_follower'
+  | 'is_following'
+  | 'follower_count'
+>;
+
 export interface ProfilesMetadata {
   last_updated: string;
   owner_username: string;

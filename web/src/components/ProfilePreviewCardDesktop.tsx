@@ -2,23 +2,20 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { Profile, getImageUrl } from '@/lib/profiles';
-import { selectProcessedKey } from '@/lib/images';
+import { HomeProfile } from '@/lib/profiles';
+import { getProfileImageUrl } from '@/lib/images';
 import { Checkmark } from './Checkmark';
 import { useState, useRef } from 'react';
 
 interface ProfilePreviewCardDesktopProps {
-  profile: Profile;
+  profile: HomeProfile;
 }
 
 export function ProfilePreviewCardDesktop({ profile }: ProfilePreviewCardDesktopProps) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const startPos = useRef({ x: 0, y: 0 });
   
-  const processedKey = selectProcessedKey(profile);
-  const imageUrl = processedKey 
-    ? getImageUrl(processedKey)
-    : profile.profile_pic_url;
+  const { url: imageUrl, unoptimized } = getProfileImageUrl(profile);
 
   const profileUrl = `/${profile.instagram_id}`;
 
@@ -51,10 +48,11 @@ export function ProfilePreviewCardDesktop({ profile }: ProfilePreviewCardDesktop
           src={imageUrl}
           alt={profile.username}
           fill
+          sizes="180px"
           className={`object-cover transition-opacity duration-300 ${
             imageLoaded ? 'opacity-100' : 'opacity-0'
           }`}
-          unoptimized={!!processedKey}
+          unoptimized={unoptimized}
           onLoad={() => setImageLoaded(true)}
           draggable={false}
         />

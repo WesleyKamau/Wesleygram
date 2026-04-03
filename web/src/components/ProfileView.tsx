@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { Download, Eye, AlertTriangle, Star, EyeOff } from 'lucide-react';
 import { Profile, getImageUrl } from '@/lib/profiles';
-import { selectProcessedKey } from '@/lib/images';
+import { selectProcessedKey, getProfileImageUrl, WESLEY_ID } from '@/lib/images';
 import { Checkmark } from './Checkmark';
 import { config } from '@/lib/config';
 import Skeleton from 'react-loading-skeleton';
@@ -40,6 +40,7 @@ export function ProfileView({ profile }: ProfileViewProps) {
     }
   }, [profile.instagram_id, profile.featured, profile.hidden]);
 
+  const isWesley = profile.instagram_id === WESLEY_ID;
   const processedKey = selectProcessedKey(profile);
   const hasProcessed = !!processedKey;
   const displayOriginal = showOriginal || !hasProcessed;
@@ -183,10 +184,12 @@ export function ProfileView({ profile }: ProfileViewProps) {
     }
   };
 
-  // Use R2 image for preview photo to avoid Instagram blocking
-  const previewImageUrl = profile.original_image_r2_key
-    ? getImageUrl(profile.original_image_r2_key)
-    : (processedKey ? getImageUrl(processedKey) : profile.profile_pic_url);
+  // Use static image for Wesley, R2 image for others
+  const previewImageUrl = isWesley
+    ? '/wesley_profile.jpg'
+    : (profile.original_image_r2_key
+      ? getImageUrl(profile.original_image_r2_key)
+      : (processedKey ? getImageUrl(processedKey) : profile.profile_pic_url));
 
   const instagramUrl = `https://www.instagram.com/${profile.username}`;
 
@@ -213,9 +216,10 @@ export function ProfileView({ profile }: ProfileViewProps) {
             src={previewImageUrl}
             alt={profile.username}
             fill
+            sizes="80px"
             className={`object-cover ${avatarLoaded ? '' : 'invisible'}`}
-            unoptimized
-            onLoadingComplete={() => setAvatarLoaded(true)}
+            unoptimized={!isWesley}
+            onLoad={() => setAvatarLoaded(true)}
           />
         </a>
         <div className="flex flex-col min-w-0 flex-1">
@@ -236,85 +240,101 @@ export function ProfileView({ profile }: ProfileViewProps) {
         </div>
       </div>
 
-      {!hasProcessed && (
-        <div className="flex items-center gap-2 rounded-lg bg-yellow-500/10 p-4 text-yellow-600 dark:text-yellow-500 shrink-0">
-          <AlertTriangle className="h-5 w-5" />
-          <p className="text-sm">
-            This profile has not been processed yet. Showing original photo.
-          </p>
-        </div>
-      )}
+      {isWesley ? (
+        <>
+          <div className="relative aspect-square w-full max-h-[50svh] sm:max-h-none overflow-hidden rounded-lg bg-neutral-100 dark:bg-neutral-900">
+            <Image
+              src="/wesley_profile.jpg"
+              alt={profile.username}
+              fill
+              sizes="(max-width: 448px) 100vw, 448px"
+              className="object-cover"
+              priority
+            />
+          </div>
 
-      <div className="relative aspect-square w-full max-h-[50svh] sm:max-h-none overflow-hidden rounded-lg bg-neutral-100 dark:bg-neutral-900">
-        {!currentImageLoaded && (
-          <Skeleton
-            height="100%"
-            width="100%"
-            baseColor="#d6d6d6"
-            highlightColor="#e9e9e9"
-            containerClassName="absolute inset-0 block h-full w-full leading-none"
-            className="block h-full w-full"
-          />
-        )}
-        {/* Stagger transitions to prevent darkening - incoming image fades in before outgoing fades out */}
-        <Image
-          src={getImageUrl(profile.original_image_r2_key)}
-          alt={profile.username}
-          fill
-          className={`object-cover transition-all duration-500 ease-in-out ${
-            displayOriginal 
-              ? `opacity-100 scale-100 blur-0 z-10 delay-0 ${originalLoaded ? '' : 'invisible'}` 
-              : 'opacity-0 scale-105 blur-md z-0 delay-150'
-          }`}
-          unoptimized
-          priority
-          onLoadingComplete={() => setOriginalLoaded(true)}
-        />
-        {hasProcessed && (
-          <Image
-            src={getImageUrl(processedKey)}
-            alt={profile.username}
-            fill
-            className={`object-cover transition-all duration-500 ease-in-out ${
-              !displayOriginal 
-                ? `opacity-100 scale-100 blur-0 z-10 delay-0 ${processedLoaded ? '' : 'invisible'}` 
-                : 'opacity-0 scale-105 blur-md z-0 delay-150'
-            }`}
-            unoptimized
-            priority
-            onLoadingComplete={() => setProcessedLoaded(true)}
-          />
-        )}
-      </div>
-
-      <div className="flex gap-4 shrink-0">
-        <button
-          onClick={handleDownload}
-          className="flex flex-1 items-center justify-center gap-3 rounded-lg bg-blue-600 py-4 text-base font-semibold text-white transition-colors hover:bg-blue-700"
-        >
-          <Download className="h-5 w-5" />
-          Download
-        </button>
-        {hasProcessed && (
-          <button
-            onClick={() => setShowOriginal(!showOriginal)}
-            className="flex flex-1 items-center justify-center gap-3 rounded-lg bg-neutral-200 py-4 text-base font-semibold text-foreground transition-colors hover:bg-neutral-300 dark:bg-neutral-800 dark:text-white dark:hover:bg-neutral-700"
+          <a
+            href="https://wesleykamau.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex w-full items-center justify-center gap-3 rounded-lg bg-blue-600 py-4 text-base font-semibold text-white transition-colors hover:bg-blue-700"
           >
-            <Eye className="h-5 w-5" />
-            {showOriginal ? 'Show Wesley-ified' : 'Show Original'}
-          </button>
-        )}
-      </div>
+            Visit Website
+          </a>
+        </>
+      ) : (
+        <>
+          {!hasProcessed && (
+            <div className="flex items-center gap-2 rounded-lg bg-yellow-500/10 p-4 text-yellow-600 dark:text-yellow-500 shrink-0">
+              <AlertTriangle className="h-5 w-5" />
+              <p className="text-sm">
+                This profile has not been processed yet. Showing original photo.
+              </p>
+            </div>
+          )}
 
-      {profile.instagram_id === '290944620' && (
-        <a
-          href="https://wesleykamau.com"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex w-full items-center justify-center gap-3 rounded-lg bg-neutral-200 py-4 text-base font-semibold text-foreground transition-colors hover:bg-neutral-300 dark:bg-neutral-800 dark:text-white dark:hover:bg-neutral-700"
-        >
-          Visit Website
-        </a>
+          <div className="relative aspect-square w-full max-h-[50svh] sm:max-h-none overflow-hidden rounded-lg bg-neutral-100 dark:bg-neutral-900">
+            {!currentImageLoaded && (
+              <Skeleton
+                height="100%"
+                width="100%"
+                baseColor="#d6d6d6"
+                highlightColor="#e9e9e9"
+                containerClassName="absolute inset-0 block h-full w-full leading-none"
+                className="block h-full w-full"
+              />
+            )}
+            <Image
+              src={getImageUrl(profile.original_image_r2_key)}
+              alt={profile.username}
+              fill
+              sizes="(max-width: 448px) 100vw, 448px"
+              className={`object-cover transition-all duration-500 ease-in-out ${
+                displayOriginal
+                  ? `opacity-100 scale-100 blur-0 z-10 delay-0 ${originalLoaded ? '' : 'invisible'}`
+                  : 'opacity-0 scale-105 blur-md z-0 delay-150'
+              }`}
+              unoptimized
+              priority
+              onLoad={() => setOriginalLoaded(true)}
+            />
+            {hasProcessed && (
+              <Image
+                src={getImageUrl(processedKey)}
+                alt={profile.username}
+                fill
+                sizes="(max-width: 448px) 100vw, 448px"
+                className={`object-cover transition-all duration-500 ease-in-out ${
+                  !displayOriginal
+                    ? `opacity-100 scale-100 blur-0 z-10 delay-0 ${processedLoaded ? '' : 'invisible'}`
+                    : 'opacity-0 scale-105 blur-md z-0 delay-150'
+                }`}
+                unoptimized
+                priority
+                onLoad={() => setProcessedLoaded(true)}
+              />
+            )}
+          </div>
+
+          <div className="flex gap-4 shrink-0">
+            <button
+              onClick={handleDownload}
+              className="flex flex-1 items-center justify-center gap-3 rounded-lg bg-blue-600 py-4 text-base font-semibold text-white transition-colors hover:bg-blue-700"
+            >
+              <Download className="h-5 w-5" />
+              Download
+            </button>
+            {hasProcessed && (
+              <button
+                onClick={() => setShowOriginal(!showOriginal)}
+                className="flex flex-1 items-center justify-center gap-3 rounded-lg bg-neutral-200 py-4 text-base font-semibold text-foreground transition-colors hover:bg-neutral-300 dark:bg-neutral-800 dark:text-white dark:hover:bg-neutral-700"
+              >
+                <Eye className="h-5 w-5" />
+                {showOriginal ? 'Show Wesley-ified' : 'Show Original'}
+              </button>
+            )}
+          </div>
+        </>
       )}
 
       <div className="rounded-lg bg-neutral-50 p-4 dark:bg-neutral-900 shrink-0 overflow-visible">
