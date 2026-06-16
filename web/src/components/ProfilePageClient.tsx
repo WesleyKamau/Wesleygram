@@ -29,7 +29,7 @@ export function ProfilePageClient({ profile, resolvedUrls }: ProfilePageClientPr
           isOpen={searchOpen}
           onClose={() => setSearchOpen(false)}
         />
-        <main className="flex flex-1 flex-col items-center px-4 py-3 sm:py-6 min-h-0 overflow-y-auto">
+        <main className="flex flex-1 flex-col items-center px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:pt-6 sm:pb-[calc(1.5rem+env(safe-area-inset-bottom))] min-h-0 overflow-y-auto">
           <ProfileView profile={profile} resolvedUrls={resolvedUrls} />
         </main>
       </div>

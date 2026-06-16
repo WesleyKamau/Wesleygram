@@ -15,7 +15,7 @@ export function Footer() {
   };
 
   return (
-    <footer className="w-full border-t border-neutral-200 bg-background py-4 sm:py-5 dark:border-neutral-800">
+    <footer className="w-full border-t border-neutral-200 bg-background pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:pt-5 sm:pb-[calc(1.25rem+env(safe-area-inset-bottom))] dark:border-neutral-800">
       <div className="mx-auto flex w-full max-w-7xl flex-col items-center justify-center gap-4 px-4 md:flex-row md:gap-8">
         <p className="text-center text-sm text-neutral-500 md:text-left dark:text-neutral-400">
           Made by{' '}

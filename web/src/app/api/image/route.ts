@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getPresignedUrl } from '@/lib/r2';
+import sharp from 'sharp';
+import { getPresignedUrl, getObjectBytes } from '@/lib/r2';
+
+export const runtime = 'nodejs';
+
+// Whitelisted thumbnail widths so the resize cache can't be flooded with
+// arbitrary sizes. These cover avatar (80px), mobile/desktop cards and retina.
+const ALLOWED_WIDTHS = new Set([96, 160, 240, 320, 480, 640]);
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -9,6 +16,40 @@ export async function GET(request: NextRequest) {
     return new NextResponse('Missing key parameter', { status: 400 });
   }
 
+  const wParam = searchParams.get('w');
+  const width = wParam ? parseInt(wParam, 10) : null;
+
+  // Sized request: fetch the object once, resize to a small square webp, and
+  // return it with a long cache. This keeps the bytes the phone downloads tiny
+  // (a full-res PNG becomes a few KB webp) instead of shipping the original.
+  if (width && ALLOWED_WIDTHS.has(width)) {
+    try {
+      const obj = await getObjectBytes(key);
+      if (obj) {
+        const resized = await sharp(Buffer.from(obj.body))
+          .rotate() // honour EXIF orientation
+          .resize(width, width, { fit: 'cover', withoutEnlargement: true })
+          .webp({ quality: 72 })
+          .toBuffer();
+
+        return new NextResponse(resized as unknown as BodyInit, {
+          headers: {
+            'Content-Type': 'image/webp',
+            'Cache-Control': 'public, max-age=86400, stale-while-revalidate=604800',
+          },
+        });
+      }
+    } catch (error) {
+      console.error('[Image API] Resize failed, falling back to redirect:', {
+        key,
+        width,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      // fall through to the redirect path below
+    }
+  }
+
+  // Default / fallback: redirect to a presigned URL (full resolution).
   try {
     const url = await getPresignedUrl(key);
 
@@ -26,7 +67,6 @@ export async function GET(request: NextRequest) {
     console.error('[Image API] Error generating presigned URL:', {
       key,
       error: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined,
     });
     return new NextResponse(
       `Failed to generate URL: ${error instanceof Error ? error.message : 'Unknown error'}`,

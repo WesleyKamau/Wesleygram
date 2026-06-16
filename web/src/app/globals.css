@@ -60,6 +60,14 @@ footer,
   -webkit-overflow-scrolling: touch;
 }
 
+/* ---- Safe-area (notch / home indicator) ----
+   With viewport-fit=cover the app paints edge-to-edge; this keeps the top
+   chrome clear of the notch. Elements that already have padding add the
+   bottom inset via calc() inline so they don't lose their own spacing. */
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+
 /* Creator card glow */
 .creator-glow {
   box-shadow: 0 0 15px 4px rgba(0, 0, 0, 0.15), 0 0 30px 8px rgba(0, 0, 0, 0.08);

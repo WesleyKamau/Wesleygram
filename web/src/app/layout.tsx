@@ -66,6 +66,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  // Paint edge-to-edge under the notch / home indicator like a native app.
+  viewportFit: "cover",
   // Blend the mobile browser/status bar into the app background so the chrome
   // disappears and it reads like a native screen rather than a web page.
   themeColor: [

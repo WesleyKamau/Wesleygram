@@ -15,20 +15,28 @@ export function selectProcessedKey(profile: Pick<Profile, 'v2_image_r2_key' | 'v
  * profiles metadata JSON) so client components can use it without pulling
  * the entire metadata blob into their bundle.
  */
-export function getImageUrl(key: string | undefined | null): string {
+export function getImageUrl(key: string | undefined | null, width?: number): string {
   if (!key) return '';
   if (key.startsWith('http')) return key;
-  return `/api/image?key=${encodeURIComponent(key)}`;
+  const sizeParam = width ? `&w=${width}` : '';
+  return `/api/image?key=${encodeURIComponent(key)}${sizeParam}`;
 }
 
-/** Returns the display image URL for a profile, with Wesley override */
-export function getProfileImageUrl(profile: Pick<Profile, 'instagram_id' | 'v2_image_r2_key' | 'v1_image_r2_key' | 'profile_pic_url'>): { url: string; unoptimized: boolean } {
+/**
+ * Returns the display image URL for a profile, with Wesley override.
+ * Pass `width` to get a resized webp thumbnail (much smaller download) for
+ * fixed-size square contexts like avatars and carousel cards.
+ */
+export function getProfileImageUrl(
+  profile: Pick<Profile, 'instagram_id' | 'v2_image_r2_key' | 'v1_image_r2_key' | 'profile_pic_url'>,
+  width?: number
+): { url: string; unoptimized: boolean } {
   if (profile.instagram_id === WESLEY_ID) {
     return { url: '/wesley_profile.jpg', unoptimized: false };
   }
   const processedKey = selectProcessedKey(profile);
   if (processedKey) {
-    return { url: getImageUrl(processedKey), unoptimized: true };
+    return { url: getImageUrl(processedKey, width), unoptimized: true };
   }
   return { url: profile.profile_pic_url, unoptimized: false };
 }

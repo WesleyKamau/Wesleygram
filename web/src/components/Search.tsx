@@ -191,7 +191,8 @@ export function Search() {
                     />
                   )}
                   {(() => {
-                    const { url, unoptimized } = getProfileImageUrl(profile);
+                    // 80px avatar → 160px thumbnail for retina.
+                    const { url, unoptimized } = getProfileImageUrl(profile, 160);
                     return (
                       <Image
                         src={url}

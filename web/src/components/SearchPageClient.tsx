@@ -135,7 +135,7 @@ function SearchContent({ profiles }: SearchPageClientProps) {
 
   return (
     <div className="flex min-h-svh flex-col bg-background text-foreground">
-      <header className="sticky top-0 z-50 w-full border-b border-neutral-200 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 dark:border-neutral-800">
+      <header className="pt-safe sticky top-0 z-50 w-full border-b border-neutral-200 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 dark:border-neutral-800">
         <div className="container mx-auto flex h-16 max-w-2xl items-center gap-4 px-4">
           <button
             type="button"
@@ -162,7 +162,7 @@ function SearchContent({ profiles }: SearchPageClientProps) {
         </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto px-4 py-6">
+      <main className="flex-1 overflow-y-auto px-4 pt-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
         <div className="mx-auto max-w-2xl">
           {query.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -255,7 +255,8 @@ function SearchContent({ profiles }: SearchPageClientProps) {
                       />
                     )}
                     {(() => {
-                      const { url, unoptimized } = getProfileImageUrl(profile);
+                      // 80px avatar → 160px thumbnail for retina.
+                      const { url, unoptimized } = getProfileImageUrl(profile, 160);
                       return (
                         <Image
                           src={url}
