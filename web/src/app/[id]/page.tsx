@@ -54,7 +54,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function ProfilePage({ params }: PageProps) {
   const { id } = await params;
-  let profile = getProfileById(id);
+  const profile = getProfileById(id);
 
   // If not found by ID, check if it's a username and redirect
   if (!profile) {

@@ -55,8 +55,6 @@ export function HomePreview({ profiles }: HomePreviewProps) {
   }
 
   // Render mobile version
-
-  // Render mobile version
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-4 overflow-hidden py-4">
       <ProfileCarouselRow profiles={rowProfiles[0]} direction="forward" keyPrefix="row1" className="hide-on-short" />

@@ -104,7 +104,7 @@ export function Search() {
     // Flag that we navigated from search so the detail page can animate
     try {
       sessionStorage.setItem('from-search', '1');
-    } catch (e) {
+    } catch {
       // no-op if storage unavailable
     }
     // Scroll to top to reset any zoom

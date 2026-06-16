@@ -95,6 +95,7 @@ export default async function Image() {
           {rows[0].map((img, idx) => (
             <img
               key={`top-${img.id}-${idx}`}
+              alt=""
               src={img.dataUrl}
               width={profileSize}
               height={profileSize}
@@ -134,6 +135,7 @@ export default async function Image() {
           {rows[1].map((img, idx) => (
             <img
               key={`bottom-${img.id}-${idx}`}
+              alt=""
               src={img.dataUrl}
               width={profileSize}
               height={profileSize}

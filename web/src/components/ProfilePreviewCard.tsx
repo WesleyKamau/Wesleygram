@@ -22,7 +22,7 @@ export function ProfilePreviewCard({ profile, priority = false }: ProfilePreview
   const handleClick = () => {
     try {
       sessionStorage.setItem('from-search', '1');
-    } catch (e) {
+    } catch {
       // no-op if storage unavailable
     }
   };

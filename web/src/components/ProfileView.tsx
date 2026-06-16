@@ -43,15 +43,6 @@ export function ProfileView({ profile, resolvedUrls, blur }: ProfileViewProps) {
   useEffect(() => {
     setIsFeatured(profile.featured || false);
     setIsHidden(profile.hidden || false);
-    
-    if (isDev) {
-      console.log('[ProfileView] Loaded profile metadata:', {
-        instagram_id: profile.instagram_id,
-        username: profile.username,
-        featured: profile.featured,
-        hidden: profile.hidden,
-      });
-    }
   }, [profile.instagram_id, profile.featured, profile.hidden]);
 
   const isWesley = profile.instagram_id === WESLEY_ID;
@@ -62,7 +53,6 @@ export function ProfileView({ profile, resolvedUrls, blur }: ProfileViewProps) {
   // the /api/image redirect route when they aren't available.
   const originalSrc = resolvedUrls?.original || getImageUrl(profile.original_image_r2_key);
   const processedSrc = resolvedUrls?.processed || getImageUrl(processedKey);
-  const imageUrl = displayOriginal ? originalSrc : processedSrc;
   // Base64 blur-up placeholders (undefined until scripts/generate-blur.ts runs,
   // in which case we cleanly fall back to the skeleton below).
   const originalBlur = blur?.original || undefined;
@@ -72,21 +62,6 @@ export function ProfileView({ profile, resolvedUrls, blur }: ProfileViewProps) {
   const avatarBlur = originalBlur || processedBlur;
 
   const currentImageLoaded = displayOriginal ? originalLoaded : processedLoaded;
-
-  // Log which image is being displayed
-  if (process.env.NODE_ENV !== 'production') {
-    console.log('[ProfileView] Image display state:', {
-      username: profile.username,
-      hasProcessed,
-      displayOriginal,
-      showOriginal,
-      imageSource: displayOriginal ? 'original_r2' : 'processed_r2',
-      imageUrl: imageUrl.substring(0, 100), // Log first 100 chars to avoid sensitive data
-      original_image_r2_key: profile.original_image_r2_key,
-      v1_image_r2_key: profile.v1_image_r2_key,
-      v2_image_r2_key: profile.v2_image_r2_key,
-    });
-  }
 
   const handleDownload = async () => {
     try {
@@ -139,7 +114,7 @@ export function ProfileView({ profile, resolvedUrls, blur }: ProfileViewProps) {
             }
             return;
           }
-        } catch (shareError) {
+        } catch {
           // If share fails or is cancelled, fall through to download
           if (process.env.NODE_ENV !== 'production') {
             console.log('[ProfileView] Share not available or cancelled, falling back to download');

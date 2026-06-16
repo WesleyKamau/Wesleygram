@@ -113,7 +113,7 @@ function SearchContent({ profiles }: SearchPageClientProps) {
   const handleSelect = (profile: HomeProfile) => {
     try {
       sessionStorage.setItem('from-search', '1');
-    } catch (e) {}
+    } catch {}
     router.push(`/${profile.instagram_id}`);
   };
 
@@ -231,7 +231,7 @@ function SearchContent({ profiles }: SearchPageClientProps) {
           ) : (
             <div className="space-y-2">
               <p className="mb-4 text-sm text-neutral-500 dark:text-neutral-400">
-                {results.length} {results.length === 1 ? 'result' : 'results'} for "{query}"
+                {results.length} {results.length === 1 ? 'result' : 'results'} for &ldquo;{query}&rdquo;
               </p>
               {results.slice(0, displayCount).map((profile) => (
                 <a
