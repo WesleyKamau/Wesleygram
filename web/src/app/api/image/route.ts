@@ -19,10 +19,17 @@ export async function GET(request: NextRequest) {
   const wParam = searchParams.get('w');
   const width = wParam ? parseInt(wParam, 10) : null;
 
+  // A `w` that isn't whitelisted is a bug (typo / unexpected caller). Reject it
+  // loudly rather than silently serving the full-res image and defeating the
+  // bandwidth savings. (Omitting `w` entirely is fine — that's the hero path.)
+  if (wParam !== null && (width === null || !ALLOWED_WIDTHS.has(width))) {
+    return new NextResponse(`Unsupported width: ${wParam}`, { status: 400 });
+  }
+
   // Sized request: fetch the object once, resize to a small square webp, and
   // return it with a long cache. This keeps the bytes the phone downloads tiny
   // (a full-res PNG becomes a few KB webp) instead of shipping the original.
-  if (width && ALLOWED_WIDTHS.has(width)) {
+  if (width) {
     try {
       const obj = await getObjectBytes(key);
       if (obj) {

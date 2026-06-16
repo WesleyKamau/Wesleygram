@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { HomeProfile } from '@/lib/profiles';
+import type { HomeProfile } from '@/types';
 import { getProfileImageUrl, WESLEY_ID } from '@/lib/images';
 import { Checkmark } from './Checkmark';
 import { useState } from 'react';

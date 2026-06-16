@@ -35,19 +35,23 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Disable the iOS long-press callout (save image / copy link) and the
-   text-selection caret on chrome & controls — content stays selectable. */
 html,
 body {
   overscroll-behavior: none; /* no rubber-band / pull-to-refresh chaining */
-  -webkit-touch-callout: none;
 }
 
-button,
+/* Suppress the iOS long-press callout (save image / copy link) on links and
+   chrome. Text stays selectable — this only kills the callout popover. */
 a,
 header,
 nav,
-footer,
+footer {
+  -webkit-touch-callout: none;
+}
+
+/* Don't let button labels get selected on double-tap. Scoped to real controls
+   so visible text (usernames, bios, names) remains selectable/copyable. */
+button,
 [role="button"] {
   -webkit-user-select: none;
   user-select: none;

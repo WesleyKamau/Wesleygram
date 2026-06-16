@@ -2,7 +2,7 @@
 
 import useEmblaCarousel from 'embla-carousel-react';
 import AutoScroll from 'embla-carousel-auto-scroll';
-import { HomeProfile } from '@/lib/profiles';
+import type { HomeProfile } from '@/types';
 import { ProfilePreviewCard } from './ProfilePreviewCard';
 import { CAROUSEL_SCROLL_SPEED } from '@/lib/constants';
 import { useEffect, useRef } from 'react';

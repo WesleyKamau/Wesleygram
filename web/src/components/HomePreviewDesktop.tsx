@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { HomeProfile } from '@/lib/profiles';
+import type { HomeProfile } from '@/types';
 import { ProfileCarouselRowDesktop } from './ProfileCarouselRowDesktop';
 import { HOME_PREVIEW_TITLE, MIN_FEATURED_PROFILES } from '@/lib/constants';
 import { filterHomepageProfiles, splitIntoRows } from '@/lib/homepage';

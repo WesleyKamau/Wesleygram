@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { Instagram, ArrowLeft, Search as SearchIcon } from 'lucide-react';
-import { HomeProfile } from '@/lib/profiles';
+import type { HomeProfile } from '@/types';
 import { getProfileImageUrl } from '@/lib/images';
 import { searchRankProfiles } from '@/lib/search';
 import { PROFILE_PREVIEW_SIZE } from '@/lib/constants';
