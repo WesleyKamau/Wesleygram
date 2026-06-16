@@ -5,14 +5,7 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const key = searchParams.get('key');
 
-  console.log('[Image API] Request received', {
-    key,
-    timestamp: new Date().toISOString(),
-    userAgent: request.headers.get('user-agent'),
-  });
-
   if (!key) {
-    console.warn('[Image API] Missing key parameter');
     return new NextResponse('Missing key parameter', { status: 400 });
   }
 
@@ -24,7 +17,6 @@ export async function GET(request: NextRequest) {
       return new NextResponse('Failed to generate URL', { status: 500 });
     }
 
-    console.log('[Image API] Successfully generated presigned URL for key:', key);
     return NextResponse.redirect(url, {
       headers: {
         'Cache-Control': 'private, max-age=3000, stale-while-revalidate=600',

@@ -1,6 +1,10 @@
 import { ProfilesMetadata, Profile, HomeProfile } from '@/types';
 import { selectProcessedKey } from '@/lib/images';
 export type { Profile, HomeProfile };
+// NOTE: `getImageUrl` intentionally lives in `@/lib/images`, NOT here. This
+// module statically imports the multi-MB metadata JSON below, so anything a
+// client component imports from it drags that whole blob into the browser
+// bundle. Import image helpers from `@/lib/images` instead.
 
 import metadataRaw from '@/data/profiles_metadata.json';
 import { searchRankProfiles } from '@/lib/search';
@@ -8,14 +12,6 @@ import { searchRankProfiles } from '@/lib/search';
 const metadata = metadataRaw as unknown as ProfilesMetadata;
 
 export const R2_BASE_URL = ''; // Not used directly anymore
-
-export function getImageUrl(key: string | undefined | null): string {
-  if (!key) return '';
-  // If it's already a full URL (like profile_pic_url), return it
-  if (key.startsWith('http')) return key;
-  // Otherwise, route through our API to get a presigned URL
-  return `/api/image?key=${encodeURIComponent(key)}`;
-}
 
 
 export function getProfiles(): Profile[] {

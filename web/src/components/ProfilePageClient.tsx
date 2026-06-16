@@ -5,13 +5,17 @@ import { ProfileView } from '@/components/ProfileView';
 import { ProfileHeader } from '@/components/ProfileHeader';
 import { SearchOverlay } from '@/components/SearchOverlay';
 import { PageTransition } from '@/components/PageTransition';
-import { Profile } from '@/lib/profiles';
+import type { Profile } from '@/types';
 
 interface ProfilePageClientProps {
   profile: Profile;
+  resolvedUrls?: {
+    original: string | null;
+    processed: string | null;
+  };
 }
 
-export function ProfilePageClient({ profile }: ProfilePageClientProps) {
+export function ProfilePageClient({ profile, resolvedUrls }: ProfilePageClientProps) {
   const [searchOpen, setSearchOpen] = useState(false);
 
   return (
@@ -26,7 +30,7 @@ export function ProfilePageClient({ profile }: ProfilePageClientProps) {
           onClose={() => setSearchOpen(false)}
         />
         <main className="flex flex-1 flex-col items-center px-4 py-3 sm:py-6 min-h-0 overflow-y-auto">
-          <ProfileView profile={profile} />
+          <ProfileView profile={profile} resolvedUrls={resolvedUrls} />
         </main>
       </div>
     </PageTransition>

@@ -7,7 +7,16 @@ export function selectProcessedKey(profile: Pick<Profile, 'v2_image_r2_key' | 'v
   return profile.v2_image_r2_key || profile.v1_image_r2_key || null;
 }
 
-function keyToImageUrl(key: string): string {
+/**
+ * Build a stable image URL for an R2 key, routing through the /api/image
+ * presign endpoint. Full URLs (e.g. profile_pic_url) are passed through.
+ *
+ * NOTE: this lives in `images.ts` (which does NOT import the multi-MB
+ * profiles metadata JSON) so client components can use it without pulling
+ * the entire metadata blob into their bundle.
+ */
+export function getImageUrl(key: string | undefined | null): string {
+  if (!key) return '';
   if (key.startsWith('http')) return key;
   return `/api/image?key=${encodeURIComponent(key)}`;
 }
@@ -19,7 +28,7 @@ export function getProfileImageUrl(profile: Pick<Profile, 'instagram_id' | 'v2_i
   }
   const processedKey = selectProcessedKey(profile);
   if (processedKey) {
-    return { url: keyToImageUrl(processedKey), unoptimized: true };
+    return { url: getImageUrl(processedKey), unoptimized: true };
   }
   return { url: profile.profile_pic_url, unoptimized: false };
 }

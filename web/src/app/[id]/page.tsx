@@ -1,5 +1,6 @@
 import { getProfileById, getProfileByUsername } from '@/lib/profiles';
-import { selectProcessedKey } from '@/lib/images';
+import { selectProcessedKey, WESLEY_ID } from '@/lib/images';
+import { getPresignedUrl } from '@/lib/r2';
 import { ProfilePageClient } from '@/components/ProfilePageClient';
 import { redirect } from 'next/navigation';
 import type { Metadata } from 'next';
@@ -64,5 +65,18 @@ export default async function ProfilePage({ params }: PageProps) {
     redirect('/?error=user-not-found');
   }
 
-  return <ProfilePageClient profile={profile} />;
+  // Resolve presigned R2 URLs on the server so the profile images load
+  // directly from R2 on first paint, skipping the /api/image redirect hop.
+  // Presigning is a local crypto op (cached in-memory) — no extra round trip.
+  let resolvedUrls: { original: string | null; processed: string | null } | undefined;
+  if (profile.instagram_id !== WESLEY_ID) {
+    const processedKey = selectProcessedKey(profile);
+    const [original, processed] = await Promise.all([
+      profile.original_image_r2_key ? getPresignedUrl(profile.original_image_r2_key) : null,
+      processedKey ? getPresignedUrl(processedKey) : null,
+    ]);
+    resolvedUrls = { original, processed };
+  }
+
+  return <ProfilePageClient profile={profile} resolvedUrls={resolvedUrls} />;
 }

@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { Download, Eye, AlertTriangle, Star, EyeOff } from 'lucide-react';
-import { Profile, getImageUrl } from '@/lib/profiles';
-import { selectProcessedKey, getProfileImageUrl, WESLEY_ID } from '@/lib/images';
+import type { Profile } from '@/types';
+import { selectProcessedKey, WESLEY_ID, getImageUrl } from '@/lib/images';
 import { Checkmark } from './Checkmark';
 import { config } from '@/lib/config';
 import Skeleton from 'react-loading-skeleton';
@@ -14,9 +14,18 @@ const isDev = process.env.NODE_ENV !== 'production';
 
 interface ProfileViewProps {
   profile: Profile;
+  /**
+   * Presigned R2 URLs resolved on the server so the images load directly
+   * from R2 instead of going through the /api/image redirect hop. Falls
+   * back to the /api/image route when absent (e.g. presign unavailable).
+   */
+  resolvedUrls?: {
+    original: string | null;
+    processed: string | null;
+  };
 }
 
-export function ProfileView({ profile }: ProfileViewProps) {
+export function ProfileView({ profile, resolvedUrls }: ProfileViewProps) {
   const [showOriginal, setShowOriginal] = useState(false);
   const [avatarLoaded, setAvatarLoaded] = useState(false);
   const [originalLoaded, setOriginalLoaded] = useState(false);
@@ -44,9 +53,11 @@ export function ProfileView({ profile }: ProfileViewProps) {
   const processedKey = selectProcessedKey(profile);
   const hasProcessed = !!processedKey;
   const displayOriginal = showOriginal || !hasProcessed;
-  const imageUrl = displayOriginal
-    ? getImageUrl(profile.original_image_r2_key)
-    : getImageUrl(processedKey);
+  // Prefer server-resolved presigned URLs (direct from R2) and fall back to
+  // the /api/image redirect route when they aren't available.
+  const originalSrc = resolvedUrls?.original || getImageUrl(profile.original_image_r2_key);
+  const processedSrc = resolvedUrls?.processed || getImageUrl(processedKey);
+  const imageUrl = displayOriginal ? originalSrc : processedSrc;
 
   const currentImageLoaded = displayOriginal ? originalLoaded : processedLoaded;
 
@@ -184,12 +195,13 @@ export function ProfileView({ profile }: ProfileViewProps) {
     }
   };
 
-  // Use static image for Wesley, R2 image for others
+  // Use static image for Wesley, R2 image for others. Reuses the same
+  // resolved source as the main image so the avatar and hero share one fetch.
   const previewImageUrl = isWesley
     ? '/wesley_profile.jpg'
     : (profile.original_image_r2_key
-      ? getImageUrl(profile.original_image_r2_key)
-      : (processedKey ? getImageUrl(processedKey) : profile.profile_pic_url));
+      ? originalSrc
+      : (processedKey ? processedSrc : profile.profile_pic_url));
 
   const instagramUrl = `https://www.instagram.com/${profile.username}`;
 
@@ -285,7 +297,7 @@ export function ProfileView({ profile }: ProfileViewProps) {
               />
             )}
             <Image
-              src={getImageUrl(profile.original_image_r2_key)}
+              src={originalSrc}
               alt={profile.username}
               fill
               sizes="(max-width: 448px) 100vw, 448px"
@@ -300,7 +312,7 @@ export function ProfileView({ profile }: ProfileViewProps) {
             />
             {hasProcessed && (
               <Image
-                src={getImageUrl(processedKey)}
+                src={processedSrc}
                 alt={profile.username}
                 fill
                 sizes="(max-width: 448px) 100vw, 448px"
