@@ -18,9 +18,15 @@ export function getProfiles(): Profile[] {
   return Object.values(metadata.profiles);
 }
 
-/** Returns slim profiles with only the fields needed for homepage and search */
+/**
+ * Returns slim profiles with only the fields needed for homepage and search.
+ * Hidden profiles are excluded so their data never ships to the client (they
+ * remain reachable by direct ID via getProfileById).
+ */
 export function getHomeProfiles(): HomeProfile[] {
-  return Object.values(metadata.profiles).map(p => ({
+  return Object.values(metadata.profiles)
+    .filter(p => !p.hidden)
+    .map(p => ({
     instagram_id: p.instagram_id,
     username: p.username,
     full_name: p.full_name,
