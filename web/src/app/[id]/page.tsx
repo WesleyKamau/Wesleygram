@@ -69,6 +69,7 @@ export default async function ProfilePage({ params }: PageProps) {
   // directly from R2 on first paint, skipping the /api/image redirect hop.
   // Presigning is a local crypto op (cached in-memory) — no extra round trip.
   let resolvedUrls: { original: string | null; processed: string | null } | undefined;
+  let blur: { original: string | null; processed: string | null } | undefined;
   if (profile.instagram_id !== WESLEY_ID) {
     const processedKey = selectProcessedKey(profile);
     const [original, processed] = await Promise.all([
@@ -76,7 +77,12 @@ export default async function ProfilePage({ params }: PageProps) {
       processedKey ? getPresignedUrl(processedKey) : null,
     ]);
     resolvedUrls = { original, processed };
+    // Blur-up placeholders mirror the processed-key selection (prefer v2).
+    blur = {
+      original: profile.original_blur ?? null,
+      processed: (profile.v2_image_r2_key ? profile.v2_blur : profile.v1_blur) ?? null,
+    };
   }
 
-  return <ProfilePageClient profile={profile} resolvedUrls={resolvedUrls} />;
+  return <ProfilePageClient profile={profile} resolvedUrls={resolvedUrls} blur={blur} />;
 }

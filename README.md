@@ -98,6 +98,7 @@ Without R2 credentials the app still runs, but profile images won't load.
 | `pnpm start` | Serve the production build. |
 | `pnpm lint` | Run ESLint. |
 | `pnpm cache-og-images` | Pre-cache Open Graph images. |
+| `pnpm generate-blur` | Precompute base64 blur-up placeholders into the metadata (needs R2 creds). |
 
 ### How images are served
 
@@ -111,6 +112,11 @@ served through `/api/image`:
 - **Full resolution** (`?key=…`) — a short-lived presigned redirect to R2. The
   profile page resolves these on the server so the hero image paints without an
   extra round-trip.
+
+Profile images also use **blur-up placeholders**: `pnpm generate-blur`
+precomputes a tiny (~200-byte) base64 preview of each image into the metadata,
+shown blurred while the full image loads. They're stored on the server-side
+profile record, so they never ship in the bulk homepage/search payload.
 
 ### Notes on the "native" feel
 

@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "cache-og-images": "tsx scripts/cache-og-images.ts",
+    "generate-blur": "tsx scripts/generate-blur.ts",
     "start": "next start",
     "lint": "eslint"
   },

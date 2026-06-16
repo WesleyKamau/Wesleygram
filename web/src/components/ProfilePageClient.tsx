@@ -12,9 +12,13 @@ interface ProfilePageClientProps {
     original: string | null;
     processed: string | null;
   };
+  blur?: {
+    original: string | null;
+    processed: string | null;
+  };
 }
 
-export function ProfilePageClient({ profile, resolvedUrls }: ProfilePageClientProps) {
+export function ProfilePageClient({ profile, resolvedUrls, blur }: ProfilePageClientProps) {
   const [searchOpen, setSearchOpen] = useState(false);
 
   return (
@@ -28,7 +32,7 @@ export function ProfilePageClient({ profile, resolvedUrls }: ProfilePageClientPr
         onClose={() => setSearchOpen(false)}
       />
       <main className="flex flex-1 flex-col items-center px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:pt-6 sm:pb-[calc(1.5rem+env(safe-area-inset-bottom))] min-h-0 overflow-y-auto">
-        <ProfileView profile={profile} resolvedUrls={resolvedUrls} />
+        <ProfileView profile={profile} resolvedUrls={resolvedUrls} blur={blur} />
       </main>
     </div>
   );

@@ -23,9 +23,14 @@ interface ProfileViewProps {
     original: string | null;
     processed: string | null;
   };
+  /** Tiny base64 blur-up placeholders shown while the full images load. */
+  blur?: {
+    original: string | null;
+    processed: string | null;
+  };
 }
 
-export function ProfileView({ profile, resolvedUrls }: ProfileViewProps) {
+export function ProfileView({ profile, resolvedUrls, blur }: ProfileViewProps) {
   const [showOriginal, setShowOriginal] = useState(false);
   const [avatarLoaded, setAvatarLoaded] = useState(false);
   const [originalLoaded, setOriginalLoaded] = useState(false);
@@ -58,6 +63,13 @@ export function ProfileView({ profile, resolvedUrls }: ProfileViewProps) {
   const originalSrc = resolvedUrls?.original || getImageUrl(profile.original_image_r2_key);
   const processedSrc = resolvedUrls?.processed || getImageUrl(processedKey);
   const imageUrl = displayOriginal ? originalSrc : processedSrc;
+  // Base64 blur-up placeholders (undefined until scripts/generate-blur.ts runs,
+  // in which case we cleanly fall back to the skeleton below).
+  const originalBlur = blur?.original || undefined;
+  const processedBlur = blur?.processed || undefined;
+  const heroHasBlur = !!(originalBlur || processedBlur);
+  // The avatar reuses the original image, so reuse its placeholder.
+  const avatarBlur = originalBlur || processedBlur;
 
   const currentImageLoaded = displayOriginal ? originalLoaded : processedLoaded;
 
@@ -214,7 +226,7 @@ export function ProfileView({ profile, resolvedUrls }: ProfileViewProps) {
           rel="noopener noreferrer"
           className="relative h-20 w-20 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800 cursor-pointer transition-transform active:scale-95 lg:hover:scale-105"
         >
-          {!avatarLoaded && (
+          {!avatarLoaded && !avatarBlur && (
             <Skeleton
               height="100%"
               width="100%"
@@ -229,8 +241,10 @@ export function ProfileView({ profile, resolvedUrls }: ProfileViewProps) {
             alt={profile.username}
             fill
             sizes="80px"
-            className={`object-cover ${avatarLoaded ? '' : 'invisible'}`}
+            className={`object-cover ${avatarLoaded || avatarBlur ? '' : 'invisible'}`}
             unoptimized={!isWesley}
+            placeholder={avatarBlur ? 'blur' : 'empty'}
+            blurDataURL={avatarBlur}
             onLoad={() => setAvatarLoaded(true)}
           />
         </a>
@@ -286,7 +300,7 @@ export function ProfileView({ profile, resolvedUrls }: ProfileViewProps) {
           )}
 
           <div className="relative aspect-square w-full max-h-[50svh] sm:max-h-none overflow-hidden rounded-lg bg-neutral-100 dark:bg-neutral-900">
-            {!currentImageLoaded && (
+            {!currentImageLoaded && !heroHasBlur && (
               <Skeleton
                 height="100%"
                 width="100%"
@@ -303,11 +317,13 @@ export function ProfileView({ profile, resolvedUrls }: ProfileViewProps) {
               sizes="(max-width: 448px) 100vw, 448px"
               className={`object-cover transition-all duration-500 ease-in-out ${
                 displayOriginal
-                  ? `opacity-100 scale-100 blur-0 z-10 delay-0 ${originalLoaded ? '' : 'invisible'}`
+                  ? `opacity-100 scale-100 blur-0 z-10 delay-0 ${originalLoaded || originalBlur ? '' : 'invisible'}`
                   : 'opacity-0 scale-105 blur-md z-0 delay-150'
               }`}
               unoptimized
               priority
+              placeholder={originalBlur ? 'blur' : 'empty'}
+              blurDataURL={originalBlur}
               onLoad={() => setOriginalLoaded(true)}
             />
             {hasProcessed && (
@@ -318,11 +334,13 @@ export function ProfileView({ profile, resolvedUrls }: ProfileViewProps) {
                 sizes="(max-width: 448px) 100vw, 448px"
                 className={`object-cover transition-all duration-500 ease-in-out ${
                   !displayOriginal
-                    ? `opacity-100 scale-100 blur-0 z-10 delay-0 ${processedLoaded ? '' : 'invisible'}`
+                    ? `opacity-100 scale-100 blur-0 z-10 delay-0 ${processedLoaded || processedBlur ? '' : 'invisible'}`
                     : 'opacity-0 scale-105 blur-md z-0 delay-150'
                 }`}
                 unoptimized
                 priority
+                placeholder={processedBlur ? 'blur' : 'empty'}
+                blurDataURL={processedBlur}
                 onLoad={() => setProcessedLoaded(true)}
               />
             )}
