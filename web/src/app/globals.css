@@ -22,6 +22,54 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-instagram), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* ---- Native app feel ----
+   Make touch interactions read like an installed app rather than a web page. */
+
+/* Kill the grey/blue flash when tapping links & buttons on mobile. */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  overscroll-behavior: none; /* no rubber-band / pull-to-refresh chaining */
+}
+
+/* Suppress the iOS long-press callout (save image / copy link) on links and
+   chrome. Text stays selectable — this only kills the callout popover. */
+a,
+header,
+nav,
+footer {
+  -webkit-touch-callout: none;
+}
+
+/* Don't let button labels get selected on double-tap. Scoped to real controls
+   so visible text (usernames, bios, names) remains selectable/copyable. */
+button,
+[role="button"] {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* Internal scroll regions shouldn't chain their scroll to the page. */
+.overflow-y-auto {
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ---- Safe-area (notch / home indicator) ----
+   With viewport-fit=cover the app paints edge-to-edge; this keeps the top
+   chrome clear of the notch. Elements that already have padding add the
+   bottom inset via calc() inline so they don't lose their own spacing. */
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
 }
 
 /* Creator card glow */

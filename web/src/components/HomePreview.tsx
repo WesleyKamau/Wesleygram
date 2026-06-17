@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { HomeProfile } from '@/lib/profiles';
+import type { HomeProfile } from '@/types';
 import { ProfileCarouselRow } from './ProfileCarouselRow';
 import { HomePreviewDesktop } from './HomePreviewDesktop';
 import { HOME_PREVIEW_TITLE } from '@/lib/constants';
@@ -53,8 +53,6 @@ export function HomePreview({ profiles }: HomePreviewProps) {
   if (isDesktop) {
     return <HomePreviewDesktop profiles={profiles} />;
   }
-
-  // Render mobile version
 
   // Render mobile version
   return (

@@ -46,3 +46,20 @@ export async function getPresignedUrl(key: string) {
     return null;
   }
 }
+
+/** Fetch the raw bytes of an R2 object (used for server-side image resizing). */
+export async function getObjectBytes(
+  key: string
+): Promise<{ body: Uint8Array; contentType?: string } | null> {
+  if (!key) return null;
+  try {
+    const command = new GetObjectCommand({ Bucket: R2_BUCKET, Key: key });
+    const res = await r2Client.send(command);
+    if (!res.Body) return null;
+    const body = await res.Body.transformToByteArray();
+    return { body, contentType: res.ContentType };
+  } catch (error) {
+    console.error('Error fetching object bytes:', error);
+    return null;
+  }
+}

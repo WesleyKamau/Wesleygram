@@ -30,6 +30,11 @@ export interface Profile {
   v2_processed_at: string | null;
   featured?: boolean; // Curated profiles to show on homepage preview
   hidden?: boolean; // Hide from homepage and search entirely
+  // Tiny base64 blur-up placeholders (LQIP), precomputed by scripts/generate-blur.ts.
+  // Server-side only — never included in HomeProfile, so they don't ship in bulk.
+  original_blur?: string;
+  v1_blur?: string;
+  v2_blur?: string;
 }
 
 /** Slim profile type with only fields needed for homepage and search */

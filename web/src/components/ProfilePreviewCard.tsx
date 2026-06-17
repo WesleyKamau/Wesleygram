@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { HomeProfile } from '@/lib/profiles';
+import type { HomeProfile } from '@/types';
 import { getProfileImageUrl, WESLEY_ID } from '@/lib/images';
 import { Checkmark } from './Checkmark';
 import { useState } from 'react';
@@ -15,13 +15,14 @@ interface ProfilePreviewCardProps {
 export function ProfilePreviewCard({ profile, priority = false }: ProfilePreviewCardProps) {
   const [imageLoaded, setImageLoaded] = useState(false);
   
-  const { url: imageUrl, unoptimized } = getProfileImageUrl(profile);
+  // Cards render at 160px (square); request a 320px thumbnail for retina.
+  const { url: imageUrl, unoptimized } = getProfileImageUrl(profile, 320);
   const isWesley = profile.instagram_id === WESLEY_ID;
 
   const handleClick = () => {
     try {
       sessionStorage.setItem('from-search', '1');
-    } catch (e) {
+    } catch {
       // no-op if storage unavailable
     }
   };

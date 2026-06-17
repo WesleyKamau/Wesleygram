@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     console.log('[Metadata API] Updating file at:', metadataPath);
 
     // Read the current metadata as string to preserve formatting
-    let fileContent = await fs.readFile(metadataPath, 'utf-8');
+    const fileContent = await fs.readFile(metadataPath, 'utf-8');
 
     // Find the profile block
     // Look for "instagram_id": {
@@ -56,29 +56,10 @@ export async function POST(request: NextRequest) {
     let newFileContent = fileContent;
 
     if (value) {
-      // We want to set it to true
-      if (fieldExists) {
-        // Update existing (though it's boolean, so maybe just replace)
-        // If it's already true, do nothing? Or replace to be sure.
-        // Since we're doing string manipulation, let's just remove it first then add it back, 
-        // or replace the line.
-        // Actually, if it exists, let's replace it.
-        // But regex replace on the whole file is risky if ID is not unique (unlikely for keys).
-        // Safer: reconstruct the profile block.
-        
-        // Let's just remove it first if it exists, then add it.
-        // Actually, simpler:
-        // If we are adding (value=true):
-        // 1. Remove any existing entry for this field in this block.
-        // 2. Insert the new entry at the top of the block.
-      }
-      
-      // Remove existing if any (to avoid duplicates or wrong values)
+      // Setting the flag to true: drop any existing entry to avoid duplicates,
+      // then insert a fresh one at the top of the profile block.
       let updatedBlock = profileBlock.replace(fieldRegex, '');
-      
-      // Insert at the top: after the opening brace
-      // The marker is `"${instagram_id}": {`
-      // We want to add `\n      "${field}": true,` after it.
+
       const insertPoint = profileStartMarker.length;
       updatedBlock = updatedBlock.slice(0, insertPoint) + `\n      "${field}": true,` + updatedBlock.slice(insertPoint);
       

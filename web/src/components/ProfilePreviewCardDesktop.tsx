@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { HomeProfile } from '@/lib/profiles';
+import type { HomeProfile } from '@/types';
 import { getProfileImageUrl, WESLEY_ID } from '@/lib/images';
 import { Checkmark } from './Checkmark';
 import { useState, useRef } from 'react';
@@ -17,7 +17,8 @@ export function ProfilePreviewCardDesktop({ profile, priority = false, size = 18
   const [imageLoaded, setImageLoaded] = useState(false);
   const startPos = useRef({ x: 0, y: 0 });
   
-  const { url: imageUrl, unoptimized } = getProfileImageUrl(profile);
+  // Desktop cards render up to ~180px; request a 480px thumbnail for retina.
+  const { url: imageUrl, unoptimized } = getProfileImageUrl(profile, 480);
   const isWesley = profile.instagram_id === WESLEY_ID;
 
   const profileUrl = `/${profile.instagram_id}`;

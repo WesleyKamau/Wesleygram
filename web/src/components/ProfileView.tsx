@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { Download, Eye, AlertTriangle, Star, EyeOff } from 'lucide-react';
-import { Profile, getImageUrl } from '@/lib/profiles';
-import { selectProcessedKey, getProfileImageUrl, WESLEY_ID } from '@/lib/images';
+import type { Profile } from '@/types';
+import { selectProcessedKey, WESLEY_ID, getImageUrl } from '@/lib/images';
 import { Checkmark } from './Checkmark';
 import { config } from '@/lib/config';
 import Skeleton from 'react-loading-skeleton';
@@ -14,9 +14,23 @@ const isDev = process.env.NODE_ENV !== 'production';
 
 interface ProfileViewProps {
   profile: Profile;
+  /**
+   * Presigned R2 URLs resolved on the server so the images load directly
+   * from R2 instead of going through the /api/image redirect hop. Falls
+   * back to the /api/image route when absent (e.g. presign unavailable).
+   */
+  resolvedUrls?: {
+    original: string | null;
+    processed: string | null;
+  };
+  /** Tiny base64 blur-up placeholders shown while the full images load. */
+  blur?: {
+    original: string | null;
+    processed: string | null;
+  };
 }
 
-export function ProfileView({ profile }: ProfileViewProps) {
+export function ProfileView({ profile, resolvedUrls, blur }: ProfileViewProps) {
   const [showOriginal, setShowOriginal] = useState(false);
   const [avatarLoaded, setAvatarLoaded] = useState(false);
   const [originalLoaded, setOriginalLoaded] = useState(false);
@@ -29,41 +43,25 @@ export function ProfileView({ profile }: ProfileViewProps) {
   useEffect(() => {
     setIsFeatured(profile.featured || false);
     setIsHidden(profile.hidden || false);
-    
-    if (isDev) {
-      console.log('[ProfileView] Loaded profile metadata:', {
-        instagram_id: profile.instagram_id,
-        username: profile.username,
-        featured: profile.featured,
-        hidden: profile.hidden,
-      });
-    }
   }, [profile.instagram_id, profile.featured, profile.hidden]);
 
   const isWesley = profile.instagram_id === WESLEY_ID;
   const processedKey = selectProcessedKey(profile);
   const hasProcessed = !!processedKey;
   const displayOriginal = showOriginal || !hasProcessed;
-  const imageUrl = displayOriginal
-    ? getImageUrl(profile.original_image_r2_key)
-    : getImageUrl(processedKey);
+  // Prefer server-resolved presigned URLs (direct from R2) and fall back to
+  // the /api/image redirect route when they aren't available.
+  const originalSrc = resolvedUrls?.original || getImageUrl(profile.original_image_r2_key);
+  const processedSrc = resolvedUrls?.processed || getImageUrl(processedKey);
+  // Base64 blur-up placeholders (undefined until scripts/generate-blur.ts runs,
+  // in which case we cleanly fall back to the skeleton below).
+  const originalBlur = blur?.original || undefined;
+  const processedBlur = blur?.processed || undefined;
+  const heroHasBlur = !!(originalBlur || processedBlur);
+  // The avatar reuses the original image, so reuse its placeholder.
+  const avatarBlur = originalBlur || processedBlur;
 
   const currentImageLoaded = displayOriginal ? originalLoaded : processedLoaded;
-
-  // Log which image is being displayed
-  if (process.env.NODE_ENV !== 'production') {
-    console.log('[ProfileView] Image display state:', {
-      username: profile.username,
-      hasProcessed,
-      displayOriginal,
-      showOriginal,
-      imageSource: displayOriginal ? 'original_r2' : 'processed_r2',
-      imageUrl: imageUrl.substring(0, 100), // Log first 100 chars to avoid sensitive data
-      original_image_r2_key: profile.original_image_r2_key,
-      v1_image_r2_key: profile.v1_image_r2_key,
-      v2_image_r2_key: profile.v2_image_r2_key,
-    });
-  }
 
   const handleDownload = async () => {
     try {
@@ -116,7 +114,7 @@ export function ProfileView({ profile }: ProfileViewProps) {
             }
             return;
           }
-        } catch (shareError) {
+        } catch {
           // If share fails or is cancelled, fall through to download
           if (process.env.NODE_ENV !== 'production') {
             console.log('[ProfileView] Share not available or cancelled, falling back to download');
@@ -184,12 +182,13 @@ export function ProfileView({ profile }: ProfileViewProps) {
     }
   };
 
-  // Use static image for Wesley, R2 image for others
+  // Use static image for Wesley, R2 image for others. Reuses the same
+  // resolved source as the main image so the avatar and hero share one fetch.
   const previewImageUrl = isWesley
     ? '/wesley_profile.jpg'
     : (profile.original_image_r2_key
-      ? getImageUrl(profile.original_image_r2_key)
-      : (processedKey ? getImageUrl(processedKey) : profile.profile_pic_url));
+      ? originalSrc
+      : (processedKey ? processedSrc : profile.profile_pic_url));
 
   const instagramUrl = `https://www.instagram.com/${profile.username}`;
 
@@ -202,7 +201,7 @@ export function ProfileView({ profile }: ProfileViewProps) {
           rel="noopener noreferrer"
           className="relative h-20 w-20 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800 cursor-pointer transition-transform active:scale-95 lg:hover:scale-105"
         >
-          {!avatarLoaded && (
+          {!avatarLoaded && !avatarBlur && (
             <Skeleton
               height="100%"
               width="100%"
@@ -217,8 +216,10 @@ export function ProfileView({ profile }: ProfileViewProps) {
             alt={profile.username}
             fill
             sizes="80px"
-            className={`object-cover ${avatarLoaded ? '' : 'invisible'}`}
+            className={`object-cover ${avatarLoaded || avatarBlur ? '' : 'invisible'}`}
             unoptimized={!isWesley}
+            placeholder={avatarBlur ? 'blur' : 'empty'}
+            blurDataURL={avatarBlur}
             onLoad={() => setAvatarLoaded(true)}
           />
         </a>
@@ -274,7 +275,7 @@ export function ProfileView({ profile }: ProfileViewProps) {
           )}
 
           <div className="relative aspect-square w-full max-h-[50svh] sm:max-h-none overflow-hidden rounded-lg bg-neutral-100 dark:bg-neutral-900">
-            {!currentImageLoaded && (
+            {!currentImageLoaded && !heroHasBlur && (
               <Skeleton
                 height="100%"
                 width="100%"
@@ -285,32 +286,36 @@ export function ProfileView({ profile }: ProfileViewProps) {
               />
             )}
             <Image
-              src={getImageUrl(profile.original_image_r2_key)}
+              src={originalSrc}
               alt={profile.username}
               fill
               sizes="(max-width: 448px) 100vw, 448px"
               className={`object-cover transition-all duration-500 ease-in-out ${
                 displayOriginal
-                  ? `opacity-100 scale-100 blur-0 z-10 delay-0 ${originalLoaded ? '' : 'invisible'}`
+                  ? `opacity-100 scale-100 blur-0 z-10 delay-0 ${originalLoaded || originalBlur ? '' : 'invisible'}`
                   : 'opacity-0 scale-105 blur-md z-0 delay-150'
               }`}
               unoptimized
               priority
+              placeholder={originalBlur ? 'blur' : 'empty'}
+              blurDataURL={originalBlur}
               onLoad={() => setOriginalLoaded(true)}
             />
             {hasProcessed && (
               <Image
-                src={getImageUrl(processedKey)}
+                src={processedSrc}
                 alt={profile.username}
                 fill
                 sizes="(max-width: 448px) 100vw, 448px"
                 className={`object-cover transition-all duration-500 ease-in-out ${
                   !displayOriginal
-                    ? `opacity-100 scale-100 blur-0 z-10 delay-0 ${processedLoaded ? '' : 'invisible'}`
+                    ? `opacity-100 scale-100 blur-0 z-10 delay-0 ${processedLoaded || processedBlur ? '' : 'invisible'}`
                     : 'opacity-0 scale-105 blur-md z-0 delay-150'
                 }`}
                 unoptimized
                 priority
+                placeholder={processedBlur ? 'blur' : 'empty'}
+                blurDataURL={processedBlur}
                 onLoad={() => setProcessedLoaded(true)}
               />
             )}

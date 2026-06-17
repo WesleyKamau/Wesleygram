@@ -66,6 +66,14 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  // Paint edge-to-edge under the notch / home indicator like a native app.
+  viewportFit: "cover",
+  // Blend the mobile browser/status bar into the app background so the chrome
+  // disappears and it reads like a native screen rather than a web page.
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#000000" },
+  ],
 };
 
 export default function RootLayout({
@@ -77,6 +85,9 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <meta name="apple-mobile-web-app-title" content="Wesleygram" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       </head>
       <body className={`${instagramSans.variable} font-sans antialiased`}>
         <ThemeProvider>
