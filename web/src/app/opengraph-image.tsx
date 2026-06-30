@@ -14,7 +14,7 @@ export const contentType = "image/png";
 
 export default async function Image() {
   // Read font file directly in nodejs runtime
-  const fontPath = join(process.cwd(), "src/app/fonts/Instagram-Sans.ttf");
+  const fontPath = join(process.cwd(), "src/app/fonts/Instagram Sans.ttf");
   const instagramSansFont = await readFile(fontPath);
 
   // Read cached images from public/og-cache
@@ -93,6 +93,8 @@ export default async function Image() {
           }}
         >
           {rows[0].map((img, idx) => (
+            // next/og (Satori) requires raw <img>; next/image is unavailable here.
+            // eslint-disable-next-line @next/next/no-img-element
             <img
               key={`top-${img.id}-${idx}`}
               alt=""
@@ -133,6 +135,8 @@ export default async function Image() {
           }}
         >
           {rows[1].map((img, idx) => (
+            // next/og (Satori) requires raw <img>; next/image is unavailable here.
+            // eslint-disable-next-line @next/next/no-img-element
             <img
               key={`bottom-${img.id}-${idx}`}
               alt=""
