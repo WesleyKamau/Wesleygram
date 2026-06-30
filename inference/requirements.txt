@@ -1,0 +1,24 @@
+# Inference pipeline dependencies (SDXL + LoRA "Wesley-ify").
+# Version floors known to work with the original Colab pipeline (Dec 2025).
+# Match torch to your CUDA build: https://pytorch.org/get-started/locally/
+# After a successful run, `pip freeze` and pin exact versions here.
+
+torch>=2.1
+diffusers>=0.27
+transformers>=4.38          # BlipProcessor / BlipForQuestionAnswering
+accelerate>=0.27
+safetensors>=0.4
+huggingface-hub>=0.20
+
+# Person segmentation + image ops for the inpainting pipeline (notebook)
+segment-anything>=1.0       # SAM vit_h checkpoint downloaded at runtime
+opencv-python-headless>=4.9
+pillow>=10.0
+numpy>=1.26
+
+# Cloudflare R2 + local credential loading
+boto3>=1.34
+python-dotenv>=1.0
+
+# Optional CUDA-only speedups
+# xformers>=0.0.23

@@ -5,11 +5,12 @@ import argparse
 from diffusers import StableDiffusionXLPipeline, DPMSolverMultistepScheduler
 import torch
 
-# LoRA path can be overridden with env var LORA_PATH
-# Default to your relative path
-LORA_PATH = "test/wesleygram-10.safetensors"
+# LoRA path resolution order: --lora CLI arg > $LORA_PATH env var > default.
+DEFAULT_LORA_PATH = os.getenv("LORA_PATH", "test/wesleygram-10.safetensors")
 
 parser = argparse.ArgumentParser(description="SDXL LoRA inference")
+parser.add_argument("--lora", type=str, default=DEFAULT_LORA_PATH,
+                    help="Path to the LoRA .safetensors file (overrides the LORA_PATH env var)")
 parser.add_argument("--prompt", type=str, default="wesley_kamau, person, male, professional headshot, soft lighting, instagram profile photo")
 parser.add_argument("--neg", type=str, default="blurry, distorted, bad anatomy, extra limbs, ugly")
 parser.add_argument("--width", type=int, default=None)
@@ -18,6 +19,7 @@ parser.add_argument("--steps", type=int, default=None)
 parser.add_argument("--guidance", type=float, default=7.0)
 parser.add_argument("--seed", type=int, default=42)
 args = parser.parse_args()
+LORA_PATH = args.lora
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 dtype = torch.float16 if device == "cuda" else torch.float32
@@ -53,7 +55,10 @@ pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config)
 
 lora_path = Path(LORA_PATH)
 if not lora_path.exists():
-    raise FileNotFoundError(f"LoRA not found at {lora_path}")
+    raise FileNotFoundError(
+        f"LoRA not found at {lora_path}. Pass --lora <path> or set $LORA_PATH. "
+        "See inference/README.md for where to obtain the wesleygram LoRA weights."
+    )
 
 # SDXL requires directory + weight name
 pipe.load_lora_weights(lora_path.parent, weight_name=lora_path.name)

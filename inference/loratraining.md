@@ -12,11 +12,11 @@ Use **Google Colab Pro** (A100/L4 GPU) with **kohya_ss** for SDXL LoRA training 
 - [x] **69 subject images** prepared (`LoRA Photos/train/wesley/`)
 - [x] **100 regularization images** prepared (`LoRA Photos/train/person/`)
 - [x] **Caption files** created for all subject images
-- [x] **Colab notebook** ready: `train_lora_colab.ipynb`
-- [ ] Upload `LoRA Photos/train/` folder to Google Drive
-- [ ] Open notebook in Colab Pro, select A100 runtime
-- [ ] Run all cells, wait ~6-8 hours
-- [ ] Download trained LoRA from `output/` folder
+- [x] **Colab notebook** ready: `Lora_Trainer_XL.ipynb`
+- [x] Upload `LoRA Photos/train/` folder to Google Drive
+- [x] Open notebook in Colab Pro, select A100 runtime
+- [x] Run all cells, wait ~6-8 hours
+- [x] Download trained LoRA from `output/` folder (final weight: `wesleygram-25.safetensors`)
 
 ---
 
@@ -62,8 +62,8 @@ Use **Google Colab Pro** (A100/L4 GPU) with **kohya_ss** for SDXL LoRA training 
 
 | File | Purpose |
 |------|---------|
-| `train_lora_colab.ipynb` | Google Colab notebook for training |
-| `LoRA Photos/train/wesley/` | 69 subject images + captions |
+| `Lora_Trainer_XL.ipynb` | Google Colab notebook for training (in `inference/`) |
+| `LoRA Photos/train/wesley/` | Subject images + captions |
 | `LoRA Photos/train/person/` | 100 regularization images |
-| `convert_lora_photos.py` | HEIC → JPG conversion script |
-| `organize_lora_photos.ps1` | Photo organization script |
+| `convert_lora_photos.py` | HEIC → JPG conversion script (in `LoRA Photos/`) |
+| `merge_training_files.py` | Merge/organize training files (in `LoRA Photos/`) |
