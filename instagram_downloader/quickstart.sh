@@ -39,21 +39,15 @@ echo "Installing dependencies..."
 pip install -r requirements.txt --quiet
 echo "✓ Dependencies installed"
 
-# Check for export files
+# Check for input data
 echo ""
-echo "Checking for Instagram export files..."
-if [ -f "data/followers_1.json" ]; then
-    echo "  ✓ followers_1.json found"
+echo "Checking for input data..."
+if [ -f "data/ids.json" ]; then
+    echo "  ✓ data/ids.json found"
 else
-    echo "  ⚠️  followers_1.json not found"
-    echo "     Download your Instagram data and place in data/"
-fi
-
-if [ -f "data/following.json" ]; then
-    echo "  ✓ following.json found"
-else
-    echo "  ⚠️  following.json not found"
-    echo "     Download your Instagram data and place in data/"
+    echo "  ⚠️  data/ids.json not found"
+    echo "     Provide data/ids.json with 'followers' and 'following' arrays,"
+    echo "     each entry being {\"username\": ..., \"id\": ...}. See README.md."
 fi
 
 echo ""

@@ -41,21 +41,15 @@ if %errorlevel% neq 0 (
     echo [+] Dependencies installed
 )
 
-REM Check for export files
+REM Check for input data
 echo.
-echo Checking for Instagram export files...
-if exist "data\followers_1.json" (
-    echo   [+] followers_1.json found
+echo Checking for input data...
+if exist "data\ids.json" (
+    echo   [+] data\ids.json found
 ) else (
-    echo   [!] followers_1.json not found
-    echo       Download your Instagram data and place in data\
-)
-
-if exist "data\following.json" (
-    echo   [+] following.json found
-) else (
-    echo   [!] following.json not found
-    echo       Download your Instagram data and place in data\
+    echo   [!] data\ids.json not found
+    echo       Provide data\ids.json with 'followers' and 'following' arrays.
+    echo       See README.md for the expected format.
 )
 
 echo.

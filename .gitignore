@@ -77,9 +77,6 @@ desktop.ini
 *.backup
 *.tmp
 
-# Playwright (deprecated but keep for safety)
-instagram_downloader/playwright_downloader.py
-
 # Sensitive credentials
 *.pem
 *.key
