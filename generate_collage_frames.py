@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
 Generate Collage Grid Frames Script
-Downloads random profile images from R2 and creates collage grid frames.
-Generates ~30 frames with varied grid layouts (2x2, 3x3, 4x4, etc.)
-Output: 1080x1080 square frames saved to gitignored folder.
+Downloads profile images from R2 and creates collage grid frames.
+Generates NUM_FRAMES (22) frames using a 9x16 grid (144 images each).
+Output: 1080x1920 (9:16) .jpg frames saved to the gitignored collage_frames/ folder.
 """
 
 import json

@@ -2,7 +2,9 @@
 """
 Download Featured Processed Images Script
 Downloads v2 processed images for all featured profiles in source quality.
-Images are saved to a gitignored folder with random number names.
+Images are saved to the gitignored featured_images/ folder with zero-padded
+sequential names (0001.png, ...) in randomized order; featured_images/username_mapping.json
+maps each number back to its username.
 """
 
 import json

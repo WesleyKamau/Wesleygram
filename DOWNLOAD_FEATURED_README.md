@@ -6,7 +6,7 @@ This script downloads all featured processed images from the profiles metadata i
 
 - Downloads v2 processed images (highest quality) for all featured profiles
 - Falls back to v1 or original images if v2 is not available
-- Names files by username for easy identification
+- Names files with zero-padded sequential numbers (`0001.png`, `0002.png`, …) in randomized order, and writes a `username_mapping.json` mapping each number back to its username
 - Skips already downloaded files
 - Saves to a gitignored `featured_images/` folder
 - Provides detailed progress output
@@ -29,6 +29,6 @@ python download_featured_images.py
 
 ## Output
 
-Images are saved to `featured_images/` with filenames matching usernames (e.g., `6irardo.png`, `beyonce.png`).
+Images are saved to `featured_images/` with zero-padded sequential filenames (e.g., `0001.png`, `0002.png`) in randomized order. The number→username map is written to `featured_images/username_mapping.json`.
 
 The folder is automatically gitignored to prevent committing large binary files.

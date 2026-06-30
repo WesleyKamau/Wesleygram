@@ -89,4 +89,7 @@ inference/models/
 featured_images/
 collage_frames/
 
+# Local backups of regenerable output
+bak/
+
 LoRA Photos/
