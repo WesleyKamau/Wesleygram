@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, Suspense } from 'react';
+import { useState, useEffect, useRef, useMemo, useSyncExternalStore, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { Instagram, ArrowLeft, Search as SearchIcon } from 'lucide-react';
@@ -17,43 +17,56 @@ interface SearchPageClientProps {
   profiles: HomeProfile[];
 }
 
+const subscribeNoop = () => () => {};
+
 function SearchContent({ profiles }: SearchPageClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get('q') || '';
   const [query, setQuery] = useState(initialQuery);
   const [debouncedQuery, setDebouncedQuery] = useState(initialQuery);
-  const [results, setResults] = useState<HomeProfile[]>([]);
-  const [isSearching, setIsSearching] = useState<boolean>(initialQuery.length > 0);
   const [loadedAvatars, setLoadedAvatars] = useState<Record<string, boolean>>({});
   const inputRef = useRef<HTMLInputElement>(null);
-  const [canGoBack, setCanGoBack] = useState(false);
   const debounceTimerRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const [displayCount, setDisplayCount] = useState(20); // Initial number of results to show
   const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  // window.history is client-only; read it via useSyncExternalStore so there is no
+  // hydration mismatch and no set-state-in-effect. Only affects the back button aria-label.
+  const canGoBack = useSyncExternalStore(
+    subscribeNoop,
+    () => window.history.length > 1,
+    () => false
+  );
+
+  // Results derive synchronously from the debounced query + profiles — no effect needed.
+  const results = useMemo(
+    () => (debouncedQuery.length > 0 ? searchRankProfiles(profiles, debouncedQuery) : []),
+    [debouncedQuery, profiles]
+  );
+
+  // While the debounce is pending, show the loading skeleton (derived, not stored).
+  const isDebouncing = query.length > 0 && query !== debouncedQuery;
+
+  // Reset the visible count whenever the (debounced) query changes — done during render
+  // via the previous-value pattern instead of a set-state-in-effect.
+  const [prevDebouncedQuery, setPrevDebouncedQuery] = useState(debouncedQuery);
+  if (prevDebouncedQuery !== debouncedQuery) {
+    setPrevDebouncedQuery(debouncedQuery);
+    setDisplayCount(20);
+  }
 
   useEffect(() => {
     // Focus input on mount
     inputRef.current?.focus();
   }, []);
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setCanGoBack(window.history.length > 1);
-    }
-  }, []);
-
-  // Reset display count when query changes
-  useEffect(() => {
-    setDisplayCount(20);
-  }, [debouncedQuery]);
-
   // Debounce the query to avoid lag on rapid keystrokes
   useEffect(() => {
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
-    
+
     debounceTimerRef.current = setTimeout(() => {
       setDebouncedQuery(query);
     }, 150); // 150ms debounce
@@ -77,19 +90,6 @@ function SearchContent({ profiles }: SearchPageClientProps) {
     }
   }, [debouncedQuery, searchParams, router]);
 
-  // Search only when debounced query changes
-  useEffect(() => {
-    if (debouncedQuery.length > 0) {
-      setIsSearching(true);
-      const ranked = searchRankProfiles(profiles, debouncedQuery);
-      setResults(ranked);
-      setIsSearching(false);
-    } else {
-      setResults([]);
-      setIsSearching(false);
-    }
-  }, [debouncedQuery, profiles]);
-
   // Infinite scroll: load more results when sentinel is visible
   useEffect(() => {
     const sentinel = loadMoreRef.current;
@@ -107,8 +107,6 @@ function SearchContent({ profiles }: SearchPageClientProps) {
     observer.observe(sentinel);
     return () => observer.disconnect();
   }, [results.length, displayCount]);
-  
-  // Scoring/sorting moved to shared util
 
   const handleSelect = (profile: HomeProfile) => {
     try {
@@ -172,11 +170,11 @@ function SearchContent({ profiles }: SearchPageClientProps) {
                 Find profiles by username or name
               </p>
             </div>
-          ) : isSearching ? (
+          ) : isDebouncing ? (
             <div className="space-y-2">
               <div className="mb-4">
-                <Skeleton 
-                  height={16} 
+                <Skeleton
+                  height={16}
                   width={180}
                   baseColor="#d0d0d0"
                   highlightColor="#e0e0e0"
@@ -184,34 +182,34 @@ function SearchContent({ profiles }: SearchPageClientProps) {
               </div>
               {[...Array(5)].map((_, i) => (
                 <div key={i} className="flex w-full items-center gap-4 rounded-lg px-4 py-3">
-                  <Skeleton 
-                    circle 
-                    width={PROFILE_PREVIEW_SIZE} 
+                  <Skeleton
+                    circle
+                    width={PROFILE_PREVIEW_SIZE}
                     height={PROFILE_PREVIEW_SIZE}
                     baseColor="#d0d0d0"
                     highlightColor="#e0e0e0"
                   />
                   <div className="flex min-w-0 flex-1 flex-col gap-2">
-                    <Skeleton 
-                      height={18} 
+                    <Skeleton
+                      height={18}
                       width="35%"
                       baseColor="#d0d0d0"
                       highlightColor="#e0e0e0"
                     />
-                    <Skeleton 
-                      height={16} 
+                    <Skeleton
+                      height={16}
                       width="50%"
                       baseColor="#d0d0d0"
                       highlightColor="#e0e0e0"
                     />
-                    <Skeleton 
-                      height={14} 
+                    <Skeleton
+                      height={14}
                       width="85%"
                       baseColor="#d0d0d0"
                       highlightColor="#e0e0e0"
                     />
-                    <Skeleton 
-                      height={14} 
+                    <Skeleton
+                      height={14}
                       width="70%"
                       baseColor="#d0d0d0"
                       highlightColor="#e0e0e0"
@@ -240,7 +238,7 @@ function SearchContent({ profiles }: SearchPageClientProps) {
                   className="flex w-full items-center gap-4 rounded-lg px-4 py-3 text-left transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800 no-underline"
                   onClick={(e) => navigateOnPlainLeftClick(e, () => handleSelect(profile))}
                 >
-                  <div 
+                  <div
                     className="relative shrink-0 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800"
                     style={{ width: PROFILE_PREVIEW_SIZE, height: PROFILE_PREVIEW_SIZE }}
                   >

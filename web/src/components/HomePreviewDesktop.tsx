@@ -1,17 +1,19 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { HomeProfile } from '@/types';
 import { ProfileCarouselRowDesktop } from './ProfileCarouselRowDesktop';
 import { HOME_PREVIEW_TITLE, MIN_FEATURED_PROFILES } from '@/lib/constants';
 import { filterHomepageProfiles, splitIntoRows } from '@/lib/homepage';
+import { useIsClient } from '@/lib/useIsClient';
 
 interface HomePreviewDesktopProps {
   profiles: HomeProfile[];
 }
 
 export function HomePreviewDesktop({ profiles }: HomePreviewDesktopProps) {
-  const [rowProfiles, setRowProfiles] = useState<HomeProfile[][]>([]);
+  // Client-only: the shuffle uses Math.random and reads window (see HomePreview).
+  const isClient = useIsClient();
   const [rowCount, setRowCount] = useState(3);
 
   useEffect(() => {
@@ -24,7 +26,9 @@ export function HomePreviewDesktop({ profiles }: HomePreviewDesktopProps) {
     return () => window.removeEventListener('resize', updateRowCount);
   }, []);
 
-  useEffect(() => {
+  const rowProfiles = useMemo<HomeProfile[][]>(() => {
+    if (!isClient) return [];
+
     const params = new URLSearchParams(window.location.search);
     const bypassFilter = params.get('bypass_filter') === 'true';
 
@@ -35,9 +39,8 @@ export function HomePreviewDesktop({ profiles }: HomePreviewDesktopProps) {
       targetRows: rowCount,
     });
 
-    const rows = splitIntoRows(shuffled, rowCount, 30, profiles);
-    setRowProfiles(rows);
-  }, [profiles, rowCount]);
+    return splitIntoRows(shuffled, rowCount, 30, profiles);
+  }, [profiles, rowCount, isClient]);
 
   if (rowProfiles.length === 0 || rowProfiles.some(row => row.length === 0)) {
     return null;

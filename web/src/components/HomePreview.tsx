@@ -1,19 +1,23 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { HomeProfile } from '@/types';
 import { ProfileCarouselRow } from './ProfileCarouselRow';
 import { HomePreviewDesktop } from './HomePreviewDesktop';
 import { HOME_PREVIEW_TITLE } from '@/lib/constants';
 import { filterHomepageProfiles, splitIntoRows } from '@/lib/homepage';
 import { MIN_FEATURED_PROFILES } from '@/lib/constants';
+import { useIsClient } from '@/lib/useIsClient';
 
 interface HomePreviewProps {
   profiles: HomeProfile[];
 }
 
 export function HomePreview({ profiles }: HomePreviewProps) {
-  const [rowProfiles, setRowProfiles] = useState<HomeProfile[][]>([]);
+  // The row selection shuffles with Math.random and reads window.location, so it
+  // must run on the client only. `useIsClient` keeps it out of SSR/hydration and
+  // `useMemo` derives the rows during render (no set-state-in-effect).
+  const isClient = useIsClient();
   const [isDesktop, setIsDesktop] = useState(false);
 
   useEffect(() => {
@@ -21,14 +25,16 @@ export function HomePreview({ profiles }: HomePreviewProps) {
     const checkDesktop = () => {
       setIsDesktop(window.innerWidth >= 1024);
     };
-    
+
     checkDesktop();
     window.addEventListener('resize', checkDesktop);
-    
+
     return () => window.removeEventListener('resize', checkDesktop);
   }, []);
 
-  useEffect(() => {
+  const rowProfiles = useMemo<HomeProfile[][]>(() => {
+    if (!isClient) return [];
+
     // Check for bypass filter parameter
     const params = new URLSearchParams(window.location.search);
     const bypassFilter = params.get('bypass_filter') === 'true';
@@ -41,9 +47,8 @@ export function HomePreview({ profiles }: HomePreviewProps) {
     });
 
     // Take 120 profiles and split evenly into 4 rows (30 each)
-    const rows = splitIntoRows(shuffled, 4, 30, profiles);
-    setRowProfiles(rows);
-  }, [profiles]);
+    return splitIntoRows(shuffled, 4, 30, profiles);
+  }, [profiles, isClient]);
 
   if (rowProfiles.length === 0 || rowProfiles.some(row => row.length === 0)) {
     return null;
