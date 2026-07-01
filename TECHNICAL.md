@@ -57,3 +57,29 @@ The extension fetched a lot of useful data, but only saved the usernames. (I che
 With this, I updated the python script and I had everyone's profile photos downloaded.
 
 I also upload the photos to CloudFlare R2, more on that later.
+
+---
+
+## 2. "Wesley-ify" the photos
+
+With the source photos in hand, the fun part: making everyone look like me.
+
+The approach is a **LoRA fine-tuned on top of SDXL**. I collected a set of photos of myself, captioned them with a trigger token (`wesley_kamau`), and trained a LoRA using the kohya / Hollowstrawberry XL trainer. My local GPU (an RTX 3070, 8 GB) is too small for SDXL training, so training ran on Google Colab (A100/L4). The settings live in [`inference/loratraining.md`](./inference/loratraining.md).
+
+Generating the final images isn't a plain text-to-image run — a prompt alone wouldn't keep each person's framing. Instead the inference notebook does an **inpainting** pass per photo:
+
+1. Segment the person out of the profile picture with **SAM** (Segment Anything).
+2. Read the rough pose (headshot vs. full-body) with **BLIP** visual question answering.
+3. Inpaint the masked region with an **SDXL base + refiner** pipeline plus my LoRA, tuned per pose (strength ~0.65 for headshots / 0.70 for full-body, guidance 8.0, LoRA scale 0.95).
+
+The result keeps the original's composition but swaps the subject for a Wesley-ified version. Each profile can have more than one version (`v1`, `v2`); the site prefers the newest. The full pipeline is in [`inference/`](./inference) — see its README.
+
+## 3. Store the images
+
+I genuinely considered bundling the processed images with the frontend. With ~3,300 profiles at source quality, that's hundreds of megabytes shipped to every visitor — a non-starter. So the originals and processed images go to **Cloudflare R2** (S3-compatible, no egress fees), and the metadata JSON just records the R2 object keys. The browser never talks to R2 directly: the site requests images through an API route that either resizes-and-caches a thumbnail or hands back a short-lived presigned URL.
+
+## 4. Make the site
+
+The front end is a **Next.js** app (App Router) deployed on **Vercel**, built to feel like a native Instagram-style app rather than a web page. You can search any profile by username or name and flip between their real photo and the Wesley-ified one. Images come through `/api/image` — thumbnails resized on the fly with `sharp`, full-res via presigned R2 URLs. The web app lives in [`web/`](./web); setup and details are in its README.
+
+And the domain? [wesleygram.com](https://wesleygram.com). Rolls off the tongue.

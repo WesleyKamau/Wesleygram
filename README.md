@@ -51,7 +51,7 @@ technical play-by-play of the scraping saga, see
 | [`web/`](./web) | The Next.js web app (the thing at wesleygram.com). |
 | [`inference/`](./inference) | ML notebooks & scripts — LoRA training, SDXL config, local inference. |
 | [`instagram_downloader/`](./instagram_downloader) | Python tooling to scrape profile data/photos and sync to R2. |
-| `profiles_metadata.json` | The dataset: every profile + its image keys and flags. |
+| [`web/src/data/profiles_metadata.json`](./web/src/data/profiles_metadata.json) | The dataset the site reads: every profile + its image keys and flags. (A stale legacy copy at the repo root is slated for removal.) |
 | `download_featured_images.py` | Pull source-quality processed images for featured profiles. |
 | `generate_collage_frames.py` | Generate collage frames from the processed set. |
 
@@ -113,10 +113,10 @@ served through `/api/image`:
   profile page resolves these on the server so the hero image paints without an
   extra round-trip.
 
-Profile images also use **blur-up placeholders**: `pnpm generate-blur`
-precomputes a tiny (~200-byte) base64 preview of each image into the metadata,
-shown blurred while the full image loads. They're stored on the server-side
-profile record, so they never ship in the bulk homepage/search payload.
+The app is also wired for **blur-up placeholders**: `pnpm generate-blur`
+precomputes a tiny base64 preview of each image into the metadata, shown blurred
+while the full image loads. *These aren't currently populated* — until
+`generate-blur` is run, images fall back to a loading skeleton.
 
 ### Notes on the "native" feel
 
