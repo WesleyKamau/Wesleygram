@@ -26,8 +26,10 @@ A first pass of safe, verified cleanups landed across all four projects (commits
 - **Downloader (`ecbc352`):** deleted deprecated `main.py`, rewrote `README.md` (folded in & removed `README_REFACTORED.md`), fixed `quickstart.sh/.bat` to check `data/ids.json`, aligned `.env.example`.
 - **Repo (`04946b8`):** fixed `generate_collage_frames.py` + `DOWNLOAD_FEATURED_README.md` docs, gitignored `bak/`.
 - **Web (`852e1c1`):** removed unused starter SVGs / `.vade-report` / duplicate+unused fonts / `package-lock.json`; silenced the 2 OG `<img>` lint warnings (lint now reports **0 warnings**).
+- **Web lint (`7a6e5ae`):** cleared all **7 `set-state-in-effect` errors** — carousels + search now derive state (`useMemo` + a new `useIsClient` hook); verified with `pnpm lint` (0 errors), `pnpm build`, and a production runtime smoke test.
+- **Docs (`738820f`):** rewrote `web/README.md` (was create-next-app boilerplate), finished `TECHNICAL.md` (steps 2–4: SDXL+LoRA inpainting, R2, the site), and corrected root-README inaccuracies (stale dataset label, unpopulated blur-up).
 
-> **⚠️ Still yours / deferred (NOT done):** 🔴 **rotate the R2 + Scrapfly keys and scrub git history** — the leaked keys were removed from the working tree but **remain in git history**; the PII decision; the 7 `set-state-in-effect` errors (behavior-affecting refactor, needs runtime verification); the `nbstripout` git filter; the remaining downloader doc-sprawl consolidation; and every other unchecked item below.
+> **⚠️ Still yours / deferred (NOT done):** 🔴 **rotate the R2 + Scrapfly keys and scrub git history** — the leaked keys were removed from the working tree but **remain in git history**; the PII decision; the `nbstripout` git filter; the remaining downloader doc-sprawl consolidation; and every other unchecked item below.
 
 ---
 
@@ -68,7 +70,7 @@ These span multiple projects and are the highest-stakes items in the repo.
 - [ ] **Strip internal/PII fields from `web/src/data/profiles_metadata.json`.** 5.7 MB, git-tracked; 3,297 records leak `local_path` (the dev's Windows path) plus `image_hash`, `status/error`, `r2_*` internals — none used by the site. Strip to display-only fields. — `security` `M` (`web/src/data/profiles_metadata.json`, `web/src/types/index.ts`, `web/src/lib/profiles.ts`)
 
 ### 🟡 Medium priority
-- [ ] **Fix the 7 `react-hooks/set-state-in-effect` ESLint errors.** `HomePreview.tsx:45`, `HomePreviewDesktop.tsx:39`, `Search.tsx:48,91`, `SearchPageClient.tsx:42,48,83`. Derive during render / memoize instead of setting state in effects (cascading re-renders). — `bug` `M`
+- [x] **Fix the 7 `react-hooks/set-state-in-effect` ESLint errors.** `HomePreview.tsx:45`, `HomePreviewDesktop.tsx:39`, `Search.tsx:48,91`, `SearchPageClient.tsx:42,48,83`. Derive during render / memoize instead of setting state in effects (cascading re-renders). — `bug` `M`
 - [ ] **Populate or delete the never-populated LQIP blur-up pipeline.** Fully wired (types `*_blur`, `[id]/page.tsx` blur prop, `placeholder='blur'`) but **0 of 3,298** records have blur strings, so every path falls back to the skeleton. Either run `pnpm generate-blur` (needs R2 creds) or rip out the plumbing. — `incomplete` `M` (`web/scripts/generate-blur.ts`, `web/src/app/[id]/page.tsx`, `web/src/components/ProfileView.tsx`)
 - [ ] **Reduce the ~2.6 MB profile dataset shipped to every search user.** `getHomeProfiles()` returns all 3,287 profiles incl. `profile_pic_url` (1.53 MB of the 2.57 MB). Served on homepage search focus **and** server-rendered into `/search` props. Drop `profile_pic_url` from `HomeProfile` or move to a paginated server endpoint. — `tech-debt` `M` (`web/src/app/api/profiles/route.ts`, `web/src/lib/profiles.ts`, `web/src/app/search/page.tsx`, `web/src/components/Search.tsx`)
 - [ ] **Validate the `key` param in `/api/image` and `/api/download` against known R2 keys.** Both presign/proxy *any* `key` → anyone can enumerate the whole `images-original` bucket. Whitelist against metadata keys. (`w` resize widths are already whitelisted — fine.) — `security` `M` (`web/src/app/api/image/route.ts`, `web/src/app/api/download/route.ts`)
@@ -76,7 +78,7 @@ These span multiple projects and are the highest-stakes items in the repo.
 
 ### 🟢 Low priority / polish
 - [ ] **Add `app/sitemap.ts` or drop the dangling `robots.txt` Sitemap line.** `robots.txt` points to a non-existent `sitemap.xml`. — `docs` `S` (`web/public/robots.txt`)
-- [ ] **Replace the create-next-app boilerplate `web/README.md`** with real docs (R2 setup, the `cache-og-images`/`generate-blur` scripts, env vars, metadata pipeline, pnpm, Vercel). — `docs` `S`
+- [x] **Replace the create-next-app boilerplate `web/README.md`** with real docs (R2 setup, the `cache-og-images`/`generate-blur` scripts, env vars, metadata pipeline, pnpm, Vercel). — `docs` `S`
 - [x] **Delete unused create-next-app starter SVGs** (`next.svg`, `vercel.svg`, `globe.svg`, `file.svg`, `window.svg`) — zero references. — `cleanup` `S`
 - [ ] **Harden or extract the dev-only metadata editor (`/api/profile/metadata`).** Edits the JSON by fragile string surgery (`indexOf("\"<id>\": {")` + `"    },"` heuristic) that can corrupt the file; driven by `window.alert()`. Rewrite with `JSON.parse/stringify` or move out of the deployed app. — `tech-debt` `M` (`web/src/app/api/profile/metadata/route.ts`, `web/src/components/ProfileView.tsx`)
 - [ ] **Narrow `next.config.ts` image `remotePatterns` from `hostname: '**'`** (currently an open image proxy). — `security` `S`
@@ -205,7 +207,7 @@ None. No Plaud recording pertains to this project — all 65 in the library were
 - [ ] **Add a root `requirements.txt`** for the root scripts' deps (boto3, python-dotenv, Pillow), or document that the downloader venv is intended. — `infra` `S`
 - [ ] **Consolidate the two root virtualenvs** (`.venv`, `.venv-1`) — both gitignored; local-disk hygiene. — `cleanup` `S`
 - [x] **Delete or gitignore the stray `bak/` dir** (17 MB of regenerable collage output; currently **not** ignored → would be committed if staged). Add `bak/` to `.gitignore`. — `cleanup` `S`
-- [ ] **Finish `TECHNICAL.md` or mark it partial.** It lists 4 steps but ends mid-sentence at step 1 ("more on that later"). Optionally move narrative docs into a `docs/` folder to keep root lean. — `docs` `M`
+- [x] **Finish `TECHNICAL.md` or mark it partial.** It lists 4 steps but ends mid-sentence at step 1 ("more on that later"). Optionally move narrative docs into a `docs/` folder to keep root lean. — `docs` `M`
 
 ### 🗑️ Local-only clutter (gitignored, safe to delete to reclaim disk)
 - `featured_images/` (178 MB, regenerable) · `collage_frames/` (21 MB, regenerable) · `LoRA Photos/` (1.9 GB training data) · `.venv-1/` (redundant venv) · downloader `data/*.tmp`/`*.bak`.
