@@ -4,7 +4,9 @@ import type { HomeProfile } from '@/types';
 
 function profile(overrides: Partial<HomeProfile>): HomeProfile {
   return {
-    instagram_id: overrides.username ?? 'id',
+    // Explicit id wins; otherwise fall back to the username so fixtures in a
+    // list get unique, deterministic ids without every test spelling them out.
+    instagram_id: overrides.instagram_id ?? overrides.username ?? 'id',
     username: 'user',
     full_name: 'Full Name',
     biography: '',

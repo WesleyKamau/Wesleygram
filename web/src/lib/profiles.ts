@@ -55,6 +55,12 @@ export function getCarouselProfiles(): HomeProfile[] {
   return all;
 }
 
+/** When the dataset was last regenerated (scrape timestamp from the metadata). */
+export function getDatasetLastUpdated(): Date {
+  const parsed = new Date(metadata.last_updated);
+  return Number.isNaN(parsed.getTime()) ? new Date(0) : parsed;
+}
+
 export function getProfileById(id: string): Profile | undefined {
   return metadata.profiles[id];
 }
