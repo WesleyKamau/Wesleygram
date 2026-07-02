@@ -7,19 +7,20 @@ import { Instagram, ArrowLeft, Search as SearchIcon } from 'lucide-react';
 import type { HomeProfile } from '@/types';
 import { getProfileImageUrl } from '@/lib/images';
 import { searchRankProfiles } from '@/lib/search';
+import { useHomeProfiles } from '@/lib/useHomeProfiles';
 import { PROFILE_PREVIEW_SIZE } from '@/lib/constants';
 import { Checkmark } from './Checkmark';
 import Skeleton from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
 import { navigateOnPlainLeftClick } from '@/lib/links';
 
-interface SearchPageClientProps {
-  profiles: HomeProfile[];
-}
-
 const subscribeNoop = () => () => {};
 
-function SearchContent({ profiles }: SearchPageClientProps) {
+function SearchContent() {
+  // The profile dataset is fetched client-side (CDN-cached, shared with the
+  // home search via a module cache) instead of being inlined into the RSC
+  // payload — that inline was ~2.6MB of HTML on every /search visit.
+  const { profiles, load: loadProfiles } = useHomeProfiles();
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get('q') || '';
@@ -41,12 +42,15 @@ function SearchContent({ profiles }: SearchPageClientProps) {
 
   // Results derive synchronously from the debounced query + profiles — no effect needed.
   const results = useMemo(
-    () => (debouncedQuery.length > 0 ? searchRankProfiles(profiles, debouncedQuery) : []),
+    () => (debouncedQuery.length > 0 && profiles ? searchRankProfiles(profiles, debouncedQuery) : []),
     [debouncedQuery, profiles]
   );
 
-  // While the debounce is pending, show the loading skeleton (derived, not stored).
-  const isDebouncing = query.length > 0 && query !== debouncedQuery;
+  // Show the loading skeleton while the debounce is pending or the dataset is
+  // still downloading (both derived, not stored).
+  const isDebouncing =
+    (query.length > 0 && query !== debouncedQuery) ||
+    (query.length > 0 && profiles === null);
 
   // Reset the visible count whenever the (debounced) query changes — done during render
   // via the previous-value pattern instead of a set-state-in-effect.
@@ -57,9 +61,11 @@ function SearchContent({ profiles }: SearchPageClientProps) {
   }
 
   useEffect(() => {
-    // Focus input on mount
+    // Focus input on mount and start fetching the dataset immediately —
+    // this is the dedicated search page, intent is already clear.
     inputRef.current?.focus();
-  }, []);
+    loadProfiles();
+  }, [loadProfiles]);
 
   // Debounce the query to avoid lag on rapid keystrokes
   useEffect(() => {
@@ -304,10 +310,10 @@ function SearchContent({ profiles }: SearchPageClientProps) {
   );
 }
 
-export function SearchPageClient({ profiles }: SearchPageClientProps) {
+export function SearchPageClient() {
   return (
     <Suspense fallback={<div>Loading...</div>}>
-      <SearchContent profiles={profiles} />
+      <SearchContent />
     </Suspense>
   );
 }
