@@ -23,9 +23,9 @@ export default async function Image({ params }: { params: Promise<{ id: string }
   const { id } = await params;
   const profile = getProfileById(id) ?? getProfileByUsername(id);
 
-  const [billabongFont, instagramSans] = await Promise.all([
-    readFile(join(process.cwd(), "src/app/fonts/Billabong.ttf")),
+  const [instagramSans, instagramSansBold] = await Promise.all([
     readFile(join(process.cwd(), "src/app/fonts/Instagram Sans.ttf")),
+    readFile(join(process.cwd(), "src/app/fonts/Instagram Sans Bold.ttf")),
   ]);
 
   // Resolve the photo: Wesley uses the local file, everyone else a presigned
@@ -87,8 +87,9 @@ export default async function Image({ params }: { params: Promise<{ id: string }
         >
           <div
             style={{
-              fontFamily: "Billabong",
-              fontSize: 110,
+              fontFamily: "Instagram Sans",
+              fontSize: 64,
+              fontWeight: 700,
               lineHeight: 1,
               marginBottom: 36,
             }}
@@ -130,8 +131,8 @@ export default async function Image({ params }: { params: Promise<{ id: string }
     {
       ...size,
       fonts: [
-        { name: "Billabong", data: billabongFont, style: "normal", weight: 400 },
         { name: "Instagram Sans", data: instagramSans, style: "normal", weight: 400 },
+        { name: "Instagram Sans", data: instagramSansBold, style: "normal", weight: 700 },
       ],
     }
   );

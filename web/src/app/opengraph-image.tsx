@@ -37,9 +37,8 @@ function seededShuffle<T>(items: T[], rand: () => number): T[] {
 }
 
 export default async function Image() {
-  // The wordmark font: Billabong, the typeface the Instagram logo is based on.
-  const fontPath = join(process.cwd(), "src/app/fonts/Billabong.ttf");
-  const billabongFont = await readFile(fontPath);
+  const fontPath = join(process.cwd(), "src/app/fonts/Instagram Sans.ttf");
+  const instagramSansFont = await readFile(fontPath);
 
   const rand = mulberry32(Math.floor(Date.now() / 3_600_000));
 
@@ -102,7 +101,7 @@ export default async function Image() {
           height: "100%",
           background: "#000",
           color: "#fff",
-          fontFamily: "Billabong",
+          fontFamily: "Instagram Sans",
           overflow: "hidden",
         }}
       >
@@ -134,14 +133,15 @@ export default async function Image() {
           ))}
         </div>
 
-        {/* Center wordmark — Wesleygram in the Instagram script */}
+        {/* Center text */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            fontSize: 160,
+            fontSize: 100,
             fontWeight: 400,
+            letterSpacing: "-0.02em",
           }}
         >
           Wesleygram
@@ -180,8 +180,8 @@ export default async function Image() {
       ...size,
       fonts: [
         {
-          name: "Billabong",
-          data: billabongFont,
+          name: "Instagram Sans",
+          data: instagramSansFont,
           style: "normal",
           weight: 400,
         },

@@ -78,14 +78,12 @@ Fallback order per profile: processed (`v2` → `v1`) → R2 original → an inl
 avatar. Profile pages show **blur-up placeholders** (tiny base64 previews precomputed into
 the metadata by `pnpm generate-blur`) while the full image loads.
 
-## The wordmark
+## The logo
 
-The header logo is `src/components/WesleygramWordmark.tsx` — exact vector outlines of
-"Wesleygram" set in Billabong (the typeface the Instagram logo is based on), shaped with
-HarfBuzz and extracted from the font by `scripts/generate-wordmark.py`. It ships as inline
-SVG (themeable via `currentColor`, no client font download). The OG images render the same
-font from `src/app/fonts/Billabong.ttf` server-side. Billabong is freeware for personal
-use (Type Associates / Russell Bean).
+The header currently uses an interim treatment (Instagram glyph + "Wesleygram" text in
+`Header.tsx` / `ProfileHeader.tsx`) — an artist-made Wesleygram wordmark is planned and
+slots in there when it exists. The OG images render their text in Instagram Sans from
+`src/app/fonts/` server-side.
 
 ## Routes
 
