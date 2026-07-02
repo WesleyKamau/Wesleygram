@@ -43,11 +43,7 @@ print()
 # Load metadata
 metadata_file = base_dir / 'web' / 'src' / 'data' / 'profiles_metadata.json'
 if not metadata_file.exists():
-    # Try alternate location
-    metadata_file = base_dir / 'profiles_metadata.json'
-
-if not metadata_file.exists():
-    print(f"❌ Could not find profiles_metadata.json")
+    print(f"❌ Could not find {metadata_file}")
     sys.exit(1)
 
 with open(metadata_file, 'r', encoding='utf-8') as f:

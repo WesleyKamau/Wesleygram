@@ -53,8 +53,6 @@ IMAGES_PER_FRAME_MIN = 3000  # Use all available images
 
 # Load metadata
 metadata_file = base_dir / 'web' / 'src' / 'data' / 'profiles_metadata.json'
-if not metadata_file.exists():
-    metadata_file = base_dir / 'profiles_metadata.json'
 
 if not metadata_file.exists():
     print(f"❌ Could not find profiles_metadata.json")

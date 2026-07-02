@@ -42,12 +42,23 @@ const FORCE = process.argv.includes('--force');
 const CONCURRENCY = 8;
 const BLUR_SIZE = 20; // px — tiny on purpose; the browser scales + blurs it up
 
-// key -> v1_image_r2_key etc, with the metadata field that stores its blur.
-const IMAGE_FIELDS = [
-  { keyField: 'original_image_r2_key', blurField: 'original_blur' },
-  { keyField: 'v1_image_r2_key', blurField: 'v1_blur' },
-  { keyField: 'v2_image_r2_key', blurField: 'v2_blur' },
-] as const;
+/**
+ * Which (key, blur) pairs a profile actually needs. The profile page shows
+ * the original plus the SELECTED processed image (v2, falling back to v1) —
+ * so v1_blur is only computed when a profile has no v2. Skipping the unused
+ * ones roughly halves the R2 downloads and the JSON growth.
+ */
+function imageFieldsFor(profile: Record<string, string | null | undefined>) {
+  const fields: { keyField: string; blurField: string }[] = [
+    { keyField: 'original_image_r2_key', blurField: 'original_blur' },
+  ];
+  if (profile['v2_image_r2_key']) {
+    fields.push({ keyField: 'v2_image_r2_key', blurField: 'v2_blur' });
+  } else if (profile['v1_image_r2_key']) {
+    fields.push({ keyField: 'v1_image_r2_key', blurField: 'v1_blur' });
+  }
+  return fields;
+}
 
 async function makeBlur(key: string): Promise<string | null> {
   try {
@@ -74,7 +85,7 @@ async function main() {
   // Build the work list: every (profile, image) pair that needs a blur string.
   const jobs: { profile: Record<string, string | null | undefined>; keyField: string; blurField: string; key: string }[] = [];
   for (const profile of Object.values(metadata.profiles)) {
-    for (const { keyField, blurField } of IMAGE_FIELDS) {
+    for (const { keyField, blurField } of imageFieldsFor(profile)) {
       const key = profile[keyField];
       if (typeof key === 'string' && key && (FORCE || !profile[blurField])) {
         jobs.push({ profile, keyField, blurField, key });
@@ -101,7 +112,10 @@ async function main() {
   }
   await Promise.all(Array.from({ length: CONCURRENCY }, worker));
 
-  await writeFile(METADATA_PATH, JSON.stringify(metadata, null, 2));
+  // Atomic write (temp + rename) so an interrupt can't truncate the dataset.
+  const { rename } = await import('node:fs/promises');
+  await writeFile(`${METADATA_PATH}.tmp`, JSON.stringify(metadata, null, 2) + '\n');
+  await rename(`${METADATA_PATH}.tmp`, METADATA_PATH);
   console.log(`Done. Wrote ${filled} blur placeholder(s) to ${path.relative(process.cwd(), METADATA_PATH)}.`);
 }
 
