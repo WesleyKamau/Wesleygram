@@ -1,6 +1,10 @@
+import { Instagram, Search } from 'lucide-react';
+
 // Shown instantly on navigation while the profile route streams from the
 // server — gives the tap immediate feedback so it feels native. Mirrors the
 // ProfileView layout so there's minimal shift when the real content arrives.
+// The header chrome is static, so it renders for real (no skeleton) and the
+// logo never flashes.
 export default function Loading() {
   const block = 'bg-neutral-200 dark:bg-neutral-800 animate-pulse';
 
@@ -8,11 +12,13 @@ export default function Loading() {
     <div className="flex h-svh flex-col bg-background text-foreground">
       <header className="pt-safe sticky top-0 z-50 w-full border-b border-neutral-200 dark:border-neutral-800">
         <div className="container mx-auto flex h-16 max-w-2xl items-center justify-between px-4">
-          <div className="flex items-center gap-2">
-            <div className={`h-7 w-7 rounded ${block}`} />
-            <div className={`h-6 w-36 rounded ${block}`} />
-          </div>
-          <div className={`h-9 w-9 rounded-lg ${block}`} />
+          <span className="flex items-center gap-2">
+            <Instagram className="h-7 w-7 text-foreground" />
+            <span className="text-2xl font-bold text-foreground">Wesleygram</span>
+          </span>
+          <span className="rounded-lg p-2 text-neutral-600 dark:text-neutral-400">
+            <Search className="h-5 w-5" />
+          </span>
         </div>
       </header>
 

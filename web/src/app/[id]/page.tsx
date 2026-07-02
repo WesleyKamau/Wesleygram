@@ -24,30 +24,32 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     };
   }
 
-  // Use the API route for image URLs - this avoids blocking page render
-  const imageKey = selectProcessedKey(profile) || profile.original_image_r2_key;
-  const imageUrl = imageKey ? `/api/image?key=${encodeURIComponent(imageKey)}` : null;
-
   // Easter egg for Wesley's profile
-  const pageTitle = id === '290944620' 
+  const pageTitle = id === '290944620'
     ? `@${profile.username}, except it's actually wesley`
     : `@${profile.username}, wesley-ified`;
   const pageDescription =
     profile.biography || `View ${profile.full_name}'s Wesley-ified profile photo`;
 
+  // og:image / twitter:image come from the segment's opengraph-image.tsx
+  // (a branded share card served as real bytes — crawlers don't reliably
+  // follow the old 302-to-R2 redirect this used to point at).
   return {
     title: pageTitle,
     description: pageDescription,
+    // Username URLs (/wesleykamau) render the same page; point crawlers at
+    // the canonical ID URL that the sitemap lists.
+    alternates: {
+      canonical: `/${profile.instagram_id}`,
+    },
     openGraph: {
       title: pageTitle,
       description: pageDescription,
-      images: imageUrl ? [{ url: imageUrl }] : [],
     },
     twitter: {
       card: 'summary_large_image',
       title: pageTitle,
       description: pageDescription,
-      images: imageUrl ? [imageUrl] : [],
     },
   };
 }

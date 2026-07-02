@@ -23,7 +23,7 @@ export function getHomeProfiles(): HomeProfile[] {
       full_name: p.full_name,
       biography: p.biography,
       is_verified: p.is_verified,
-      profile_pic_url: p.profile_pic_url,
+      original_image_r2_key: p.original_image_r2_key,
       v1_image_r2_key: p.v1_image_r2_key,
       v2_image_r2_key: p.v2_image_r2_key,
       featured: p.featured,
@@ -55,11 +55,18 @@ export function getCarouselProfiles(): HomeProfile[] {
   return all;
 }
 
+/** When the dataset was last regenerated (scrape timestamp from the metadata). */
+export function getDatasetLastUpdated(): Date {
+  const parsed = new Date(metadata.last_updated);
+  return Number.isNaN(parsed.getTime()) ? new Date(0) : parsed;
+}
+
 export function getProfileById(id: string): Profile | undefined {
   return metadata.profiles[id];
 }
 
-export function getProfileByUsername(username: string): Profile | undefined {
+export function getProfileByUsername(username: string | undefined): Profile | undefined {
+  if (!username) return undefined;
   const normalizedUsername = username.toLowerCase();
   return Object.values(metadata.profiles).find(
     (p) => p.username.toLowerCase() === normalizedUsername

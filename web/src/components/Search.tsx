@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
@@ -8,17 +8,16 @@ import { Search as SearchIcon } from 'lucide-react';
 import type { HomeProfile } from '@/types';
 import { getProfileImageUrl } from '@/lib/images';
 import { searchRankProfiles } from '@/lib/search';
+import { useHomeProfiles } from '@/lib/useHomeProfiles';
 import { PROFILE_PREVIEW_SIZE } from '@/lib/constants';
 import { Checkmark } from './Checkmark';
 import Skeleton from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
 import { navigateOnPlainLeftClick } from '@/lib/links';
 
-let cachedProfiles: HomeProfile[] | null = null;
-
 export function Search() {
   const [query, setQuery] = useState('');
-  const [profiles, setProfiles] = useState<HomeProfile[]>([]);
+  const { profiles, load: loadProfiles } = useHomeProfiles();
   const [isOpen, setIsOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const anchorRef = useRef<HTMLDivElement>(null);
@@ -29,24 +28,9 @@ export function Search() {
 
   // Results are derived from the query + loaded profiles — no effect needed.
   const results = useMemo(
-    () => (query.length > 0 ? searchRankProfiles(profiles, query, 10) : []),
+    () => (query.length > 0 && profiles ? searchRankProfiles(profiles, query, 10) : []),
     [query, profiles]
   );
-
-  const loadProfiles = useCallback(async () => {
-    if (cachedProfiles) {
-      setProfiles(cachedProfiles);
-      return;
-    }
-    try {
-      const res = await fetch('/api/profiles');
-      const data = await res.json();
-      cachedProfiles = data;
-      setProfiles(data);
-    } catch {
-      // silently fail — search just won't work
-    }
-  }, []);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -137,11 +121,11 @@ export function Search() {
           onChange={(e) => {
             const value = e.target.value;
             setQuery(value);
-            if (profiles.length === 0) loadProfiles();
+            loadProfiles();
             setIsOpen(value.length > 0);
           }}
           onFocus={() => {
-            if (profiles.length === 0) loadProfiles();
+            loadProfiles();
           }}
           onKeyDown={handleKeyDown}
         />

@@ -44,19 +44,28 @@ but profile images won't load.
 | `pnpm build` | Production build. |
 | `pnpm start` | Serve the production build. |
 | `pnpm lint` | Run ESLint. |
-| `pnpm cache-og-images` | Pre-cache the Open Graph collage images into `public/og-cache`. |
-| `pnpm generate-blur` | Precompute base64 blur-up placeholders into the metadata (needs R2 creds). |
+| `pnpm test` | Run the vitest unit suite (lib/search, images, homepage, profiles). |
+| `pnpm cache-og-images` | Pre-cache the Open Graph collage images into `public/og-cache`. Run manually after changing featured profiles — there is no build hook. |
+| `pnpm generate-blur` | Precompute base64 blur-up placeholders into the metadata (needs R2 creds). Idempotent; only fills missing ones. |
 
 ## Data
 
 All profile data comes from a single bundled `src/data/profiles_metadata.json` — a keyed
 object (`{ profiles: { <instagram_id>: {...} } }`) of ~3,300 records with usernames, names,
-bios, flags, and R2 image keys (`original`, `v1`, `v2`; the app prefers `v2`). There is no
-database.
+bios, counts, curation flags, R2 image keys (`original`, `v1`, `v2`; the app prefers `v2`),
+and blur-up placeholders. There is no database.
+
+The dataset is deliberately slim: scraper internals (local file paths, image hashes,
+processing status/errors, timestamps) and the long-expired Instagram CDN
+`profile_pic_url`s were stripped — the unit tests assert they never come back. The slim
+search payload served by `/api/profiles` drops the server-only fields (bios ship, blur
+strings don't).
 
 ## How images are served
 
-Images are private in R2 and served through `/api/image?key=…`:
+Images are private in R2 and served through `/api/image?key=…`. Both image routes validate
+`key` against the set of R2 keys known from the metadata — arbitrary bucket paths are
+rejected with 404.
 
 - **Thumbnails** (`&w=320`, from a whitelist of widths) — fetched from R2 and resized to a
   small square WebP with `sharp`, then cached. Keeps the ~120-card homepage carousel light.
@@ -65,12 +74,16 @@ Images are private in R2 and served through `/api/image?key=…`:
 
 `/api/download` proxies the full-res bytes for the share/download button.
 
-### Blur-up placeholders (currently unpopulated)
+Fallback order per profile: processed (`v2` → `v1`) → R2 original → an inline silhouette
+avatar. Profile pages show **blur-up placeholders** (tiny base64 previews precomputed into
+the metadata by `pnpm generate-blur`) while the full image loads.
 
-The app is wired for LQIP blur-up: `pnpm generate-blur` precomputes a tiny base64 preview of
-each image into the metadata, shown blurred while the full image loads. **As of this writing
-the metadata contains no blur strings**, so every image falls back to the loading skeleton —
-run `generate-blur` (with R2 creds) to populate them, or remove the plumbing if unwanted.
+## The logo
+
+The header currently uses an interim treatment (Instagram glyph + "Wesleygram" text in
+`Header.tsx` / `ProfileHeader.tsx`) — an artist-made Wesleygram wordmark is planned and
+slots in there when it exists. The OG images render their text in Instagram Sans from
+`src/app/fonts/` server-side.
 
 ## Routes
 
@@ -80,8 +93,14 @@ run `generate-blur` (with R2 creds) to populate them, or remove the plumbing if 
 | `/[id]` | dynamic | Profile page by Instagram ID (username fallback → redirect). |
 | `/profile/[id]` | dynamic | Redirect to `/[id]`. |
 | `/search` | static shell | Full search page (`?q=`), client-ranked results + infinite scroll. |
-| `/api/image`, `/api/download`, `/api/profiles` | dynamic | Image proxy/resize, download, slim profile list for search. |
+| `/[id]/opengraph-image` | dynamic | Branded per-profile share card (photo + wordmark + username). |
+| `/opengraph-image` | static (1h revalidate) | Seeded collage card used by the homepage/search metadata. |
+| `/sitemap.xml` | static | Homepage, search, and every visible profile. |
+| `/api/image`, `/api/download`, `/api/profiles` | dynamic | Image proxy/resize, download, slim profile list for search (CDN-cached). |
 | `/api/profile/metadata` | dynamic | Dev-only metadata editor (gated to non-production). |
+
+Unknown routes get an Instagram-style 404 (`app/not-found.tsx`); unknown profile IDs
+redirect home with a toast.
 
 ## Native-app feel
 

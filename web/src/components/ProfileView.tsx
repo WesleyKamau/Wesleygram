@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { Download, Eye, AlertTriangle, Star, EyeOff } from 'lucide-react';
 import type { Profile } from '@/types';
-import { selectProcessedKey, WESLEY_ID, getImageUrl } from '@/lib/images';
+import { selectProcessedKey, WESLEY_ID, getImageUrl, DEFAULT_AVATAR_URL } from '@/lib/images';
 import { Checkmark } from './Checkmark';
 import { config } from '@/lib/config';
 import Skeleton from 'react-loading-skeleton';
@@ -188,9 +188,14 @@ export function ProfileView({ profile, resolvedUrls, blur }: ProfileViewProps) {
     ? '/wesley_profile.jpg'
     : (profile.original_image_r2_key
       ? originalSrc
-      : (processedKey ? processedSrc : profile.profile_pic_url));
+      : (processedKey ? processedSrc : DEFAULT_AVATAR_URL));
 
   const instagramUrl = `https://www.instagram.com/${profile.username}`;
+
+  // A handful of scraped profiles have all-zero counts (the GraphQL response
+  // didn't include them) — hide the row rather than showing fake zeros.
+  const hasStats =
+    profile.post_count > 0 || profile.follower_count > 0 || profile.following_count > 0;
 
   return (
     <div className="flex w-full max-w-md flex-col gap-4">
@@ -240,6 +245,23 @@ export function ProfileView({ profile, resolvedUrls, blur }: ProfileViewProps) {
           </a>
         </div>
       </div>
+
+      {config.features.showProfileStats && hasStats && (
+        <div className="grid grid-cols-3 gap-4 text-center shrink-0">
+          <div>
+            <div className="font-bold text-foreground">{profile.post_count.toLocaleString()}</div>
+            <div className="text-xs text-neutral-500 dark:text-neutral-400">Posts</div>
+          </div>
+          <div>
+            <div className="font-bold text-foreground">{profile.follower_count.toLocaleString()}</div>
+            <div className="text-xs text-neutral-500 dark:text-neutral-400">Followers</div>
+          </div>
+          <div>
+            <div className="font-bold text-foreground">{profile.following_count.toLocaleString()}</div>
+            <div className="text-xs text-neutral-500 dark:text-neutral-400">Following</div>
+          </div>
+        </div>
+      )}
 
       {isWesley ? (
         <>
@@ -382,23 +404,6 @@ export function ProfileView({ profile, resolvedUrls, blur }: ProfileViewProps) {
             <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
               Featured: Show on homepage. Hidden: Exclude from homepage. Changes require homepage refresh.
             </p>
-          </div>
-        </div>
-      )}
-      
-      {config.features.showProfileStats && (
-        <div className="hidden sm:grid grid-cols-3 gap-4 text-center">
-          <div>
-            <div className="font-bold text-foreground">{profile.post_count.toLocaleString()}</div>
-            <div className="text-xs text-neutral-500 dark:text-neutral-400">Posts</div>
-          </div>
-          <div>
-            <div className="font-bold text-foreground">{profile.follower_count.toLocaleString()}</div>
-            <div className="text-xs text-neutral-500 dark:text-neutral-400">Followers</div>
-          </div>
-          <div>
-            <div className="font-bold text-foreground">{profile.following_count.toLocaleString()}</div>
-            <div className="text-xs text-neutral-500 dark:text-neutral-400">Following</div>
           </div>
         </div>
       )}

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import sharp from 'sharp';
 import { getPresignedUrl, getObjectBytes } from '@/lib/r2';
+import { isKnownR2Key } from '@/lib/r2-keys';
 
 export const runtime = 'nodejs';
 
@@ -14,6 +15,12 @@ export async function GET(request: NextRequest) {
 
   if (!key) {
     return new NextResponse('Missing key parameter', { status: 400 });
+  }
+
+  // Only serve keys that belong to a known profile — otherwise this route is
+  // an open proxy for every object in the bucket.
+  if (!isKnownR2Key(key)) {
+    return new NextResponse('Unknown key', { status: 404 });
   }
 
   const wParam = searchParams.get('w');

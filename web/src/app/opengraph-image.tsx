@@ -5,32 +5,56 @@ import { existsSync } from "fs";
 
 // Use nodejs runtime to read cached files
 export const runtime = "nodejs";
-export const dynamic = "force-dynamic"; // Generate on every request
+// Regenerate at most hourly: crawlers hit this on every page share, and the
+// collage doesn't need to differ per-request — just per hour (seed below).
+export const revalidate = 3600;
 export const size = {
   width: 1200,
   height: 630,
 };
 export const contentType = "image/png";
 
+// Deterministic PRNG so the shuffle is stable for a given hour bucket —
+// cacheable, testable, and still rotates the collage over time.
+function mulberry32(seed: number) {
+  let a = seed >>> 0;
+  return () => {
+    a |= 0;
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function seededShuffle<T>(items: T[], rand: () => number): T[] {
+  const arr = [...items];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
 export default async function Image() {
-  // Read font file directly in nodejs runtime
   const fontPath = join(process.cwd(), "src/app/fonts/Instagram Sans.ttf");
   const instagramSansFont = await readFile(fontPath);
+
+  const rand = mulberry32(Math.floor(Date.now() / 3_600_000));
 
   // Read cached images from public/og-cache
   const cacheDir = join(process.cwd(), "public", "og-cache");
   const profilesPerRow = 8;
   const totalNeeded = profilesPerRow * 2; // Only need 16 images
-  
+
   let imageBuffers: { id: string; dataUrl: string }[] = [];
 
   if (existsSync(cacheDir)) {
     const files = await readdir(cacheDir);
     const imageFiles = files.filter((f) => f.endsWith(".jpg") || f.endsWith(".png"));
-    
+
     // Shuffle filenames first, then only read what we need
-    const shuffledFiles = imageFiles.sort(() => Math.random() - 0.5);
-    const filesToRead = shuffledFiles.slice(0, totalNeeded);
+    const filesToRead = seededShuffle(imageFiles, rand).slice(0, totalNeeded);
 
     // Only read the images we actually need (16 instead of 178)
     imageBuffers = await Promise.all(
@@ -60,10 +84,10 @@ export default async function Image() {
   const profileSize = 240; // Twice as big
   const profileGap = 16;
   const borderRadius = 12; // rounded-lg equivalent
-  
+
   // Generate random x offsets for entire rows (0 to profileSize)
-  const topRowOffset = Math.floor(Math.random() * profileSize);
-  const bottomRowOffset = Math.floor(Math.random() * profileSize);
+  const topRowOffset = Math.floor(rand() * profileSize);
+  const bottomRowOffset = Math.floor(rand() * profileSize);
 
   return new ImageResponse(
     (

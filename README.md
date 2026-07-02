@@ -51,7 +51,7 @@ technical play-by-play of the scraping saga, see
 | [`web/`](./web) | The Next.js web app (the thing at wesleygram.com). |
 | [`inference/`](./inference) | ML notebooks & scripts — LoRA training, SDXL config, local inference. |
 | [`instagram_downloader/`](./instagram_downloader) | Python tooling to scrape profile data/photos and sync to R2. |
-| [`web/src/data/profiles_metadata.json`](./web/src/data/profiles_metadata.json) | The dataset the site reads: every profile + its image keys and flags. (A stale legacy copy at the repo root is slated for removal.) |
+| [`web/src/data/profiles_metadata.json`](./web/src/data/profiles_metadata.json) | The dataset the site reads: every profile + its image keys and flags. |
 | `download_featured_images.py` | Pull source-quality processed images for featured profiles. |
 | `generate_collage_frames.py` | Generate collage frames from the processed set. |
 

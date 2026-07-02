@@ -50,6 +50,12 @@ export function HomePreview({ profiles }: HomePreviewProps) {
     return splitIntoRows(shuffled, 4, 30, profiles);
   }, [profiles, isClient]);
 
+  // The shuffle is client-only (Math.random), so SSR and the hydration pass
+  // can't know the rows yet — paint a matching skeleton instead of nothing.
+  if (!isClient) {
+    return <HomePreviewSkeleton />;
+  }
+
   if (rowProfiles.length === 0 || rowProfiles.some(row => row.length === 0)) {
     return null;
   }
@@ -71,6 +77,40 @@ export function HomePreview({ profiles }: HomePreviewProps) {
 
       <ProfileCarouselRow profiles={rowProfiles[2]} direction="forward" keyPrefix="row3" />
       <ProfileCarouselRow profiles={rowProfiles[3]} direction="backward" keyPrefix="row4" className="hide-on-short" />
+    </div>
+  );
+}
+
+function SkeletonRow({ className = '' }: { className?: string }) {
+  return (
+    <div className={`w-full overflow-hidden ${className}`}>
+      <div className="flex gap-4 pl-4 pr-4">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div key={i} className="flex w-40 tall-width flex-[0_0_auto] flex-col items-center gap-1">
+            <div className="h-40 w-40 tall-size rounded-lg bg-neutral-200 animate-pulse dark:bg-neutral-800" />
+            <div className="h-4 w-24 rounded bg-neutral-200 animate-pulse dark:bg-neutral-800" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Mirrors the real carousel layout (same sizes, gaps and title position) so
+// the server-rendered page has structure immediately and hydration doesn't
+// shift anything.
+function HomePreviewSkeleton() {
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center gap-4 overflow-hidden py-4">
+      <SkeletonRow className="hide-on-short" />
+      <SkeletonRow />
+
+      <div className="text-center">
+        <h2 className="text-2xl font-bold text-foreground">{HOME_PREVIEW_TITLE}</h2>
+      </div>
+
+      <SkeletonRow />
+      <SkeletonRow className="hide-on-short" />
     </div>
   );
 }
