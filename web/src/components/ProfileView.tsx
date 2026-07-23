@@ -276,10 +276,12 @@ export function ProfileView({ profile, resolvedUrls, blur }: ProfileViewProps) {
             />
           </div>
 
+          {/* Same-tab link (no target="_blank") so the signature curtain can
+              intercept the click and play the cross-domain exit transition.
+              No rel="noreferrer" either — the referrer carries signature
+              continuity to wesleykamau.com. */}
           <a
             href="https://wesleykamau.com"
-            target="_blank"
-            rel="noopener noreferrer"
             className="flex w-full items-center justify-center gap-3 rounded-lg bg-blue-600 py-4 text-base font-semibold text-white transition-colors hover:bg-blue-700"
           >
             Visit Website
