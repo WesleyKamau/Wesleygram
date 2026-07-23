@@ -1,18 +1,23 @@
 /**
- * wesleygram.com — the Instagram remake.
+ * wesleygram.com — the Instagram remake (linked mode).
  * Derived from the kit's sites/wesleygram.config.js. Colors/font match the
  * Wesleygram variant on wesleykamau.com, so the exit-close there and the
  * arrival intro here are the same look.
  *
+ * Never set `signatures` here — in linked mode the handwriting comes from
+ * the centralized data file on wesleykamau.com (with the vendored
+ * public/signatures-fallback.js as a backup), so it stays current
+ * everywhere without per-repo updates.
+ *
  * Font handling (FABLE_INSTRUCTIONS.md → Step 3, hard no-swap guarantee):
  * the site loads "Instagram Sans" through next/font/local, which registers
- * it under a hashed family name — so document.fonts.load("'Instagram Sans'")
- * can't find it and the wordmark would swap to a system fallback. To match
- * what wesleykamau.com does, the Bold face is subsetted to just the wordmark
- * glyphs and inlined as "wks-mark" (see the <style> in app/layout.tsx).
- * "wks-mark" is prepended to the stack and registered via `fonts` so the
- * curtain gates on it and paints the wordmark in the real face, no swap.
- * `signatures` is injected separately by SignatureCurtain.jsx — never set it.
+ * it under a hashed family name the curtain can't gate on — so
+ * document.fonts.load("'Instagram Sans'") can't find it and the wordmark
+ * would swap to a system fallback. To match what wesleykamau.com does, the
+ * Bold face is subsetted to just the wordmark glyphs and inlined as
+ * "wks-mark" (see the <style> in app/layout.tsx). "wks-mark" is prepended
+ * to the stack and registered via `fonts` so the curtain gates on it and
+ * paints the wordmark in the real face, no swap.
  */
 export const SIGNATURE_CONFIG = {
   name: "Wesleygram",
@@ -20,7 +25,7 @@ export const SIGNATURE_CONFIG = {
   ink: "#ffffff",
   font: "'wks-mark', 'Instagram Sans', -apple-system, system-ui, sans-serif",
   fonts: { Wesleygram: { family: "wks-mark", weight: 700 } },
-  reveal: "up",
+  reveal: "split",
   minHold: 1875,
   domains: ["wesleykamau.com", "wesleygram.com"],
 };
