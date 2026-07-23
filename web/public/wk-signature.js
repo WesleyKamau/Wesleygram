@@ -1,5 +1,5 @@
 /*!
- * wk-signature v3.6.2
+ * wk-signature v3.7.0
  * Wesley Kamau's cross-domain signature loading screen.
  *
  * On every full page load a branded sheet covers the page while Wesley's
@@ -45,7 +45,12 @@
  *            signatures reach every site without per-repo updates. Optional
  *            per-stroke timing {start,dur,pace} plays each back at his real
  *            writing pace.
- *   variants (WK_SIGNATURE only) array of per-path/per-host look overrides.
+ *   variants (WK_SIGNATURE only) array of per-path/per-host look overrides —
+ *            host+path combos are most specific (a spoke's deep link to a hub
+ *            project closes in that project's brand). If absent, a
+ *            window.WK_VARIANTS global is used instead — the owned-domain
+ *            brand map served by the hub's data file, so linked spokes close
+ *            exit covers in any owned destination's brand with zero config.
  *
  * Per-link overrides:
  *   <a data-signature ...>     force the exit transition (any destination)
@@ -149,7 +154,16 @@
         ? window.WK_SIGNATURES
         : PLACEHOLDER_SIGNATURES,
     // Per-project variants: [{ path|host, name, paper, ink, font, design }].
-    variants: Array.isArray(user.variants) ? user.variants : [],
+    // The owned-domain brand map, same sourcing model as `signatures`: inline
+    // config first (the hub passes its own variants), else the centralized
+    // window.WK_VARIANTS set by the hub's data file — so a linked spoke can
+    // close its exit covers in ANY owned destination's brand (host and
+    // host+path entries) without per-repo config.
+    variants: Array.isArray(user.variants)
+      ? user.variants
+      : Array.isArray(window.WK_VARIANTS)
+      ? window.WK_VARIANTS
+      : [],
     // Wordmark name -> { family, weight } of an inlined subsetted font. The
     // site injects the matching @font-face; using these guarantees the
     // wordmark paints in the right face with no swap. Falls back to `font`.
@@ -168,11 +182,25 @@
       if (v.host) {
         var h = String(v.host).toLowerCase();
         var hn = url.hostname.toLowerCase();
-        if (hn === h || hn.slice(-(h.length + 1)) === "." + h) {
-          if (h.length + 1000 > bestLen) {
-            best = v;
-            bestLen = h.length + 1000; // host match beats path match
+        if (!(hn === h || hn.slice(-(h.length + 1)) === "." + h)) continue;
+        if (v.path) {
+          // host+path combo (the centrally-served brand map annotates the
+          // hub's per-project variants this way): most specific of all, so a
+          // spoke's link to wesleykamau.com/memorymap closes in MemoryMap's
+          // brand, not just the hub's base look.
+          var pc = String(v.path);
+          if (
+            url.pathname === pc ||
+            url.pathname.slice(0, pc.length + 1) === pc + "/"
+          ) {
+            if (2000 + h.length + pc.length > bestLen) {
+              best = v;
+              bestLen = 2000 + h.length + pc.length;
+            }
           }
+        } else if (h.length + 1000 > bestLen) {
+          best = v;
+          bestLen = h.length + 1000; // host match beats local path match
         }
       } else if (v.path && url.host === location.host) {
         var p = String(v.path);
@@ -1748,7 +1776,7 @@
   window.addEventListener("pageshow", onPageShow);
 
   var api = {
-    version: "3.6.2",
+    version: "3.7.0",
     config: cfg,
     /** Animation timings (ms) for orchestrating SPA transitions. */
     timings: { close: T.close, reveal: T.reveal, fade: T.fade },
