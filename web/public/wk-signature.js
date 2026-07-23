@@ -1,5 +1,5 @@
 /*!
- * wk-signature v3.4.0
+ * wk-signature v3.6.2
  * Wesley Kamau's cross-domain signature loading screen.
  *
  * On every full page load a branded sheet covers the page while Wesley's
@@ -36,9 +36,15 @@
  *   domains  comma list (or array) of owned hosts; links to them get the
  *            exit transition. Subdomains match automatically.
  *   signatures (WK_SIGNATURE only) array of {viewBox, paths[], weight,
- *            timing?} — Wesley's real signatures; one is picked at random per
- *            session (kept across hops). Optional per-stroke timing
- *            {start,dur,pace} plays each back at his real writing pace.
+ *            timing?} — Wesley's real signatures. A fresh one is rolled per
+ *            page view, never repeating the one just shown (the previous pick
+ *            travels across domains in a scrubbed #wk<idx> fragment). If the
+ *            option is absent, a window.WK_SIGNATURES global is used instead
+ *            — set by the centralized data file
+ *            https://wesleykamau.com/signature/signatures.js, so new
+ *            signatures reach every site without per-repo updates. Optional
+ *            per-stroke timing {start,dur,pace} plays each back at his real
+ *            writing pace.
  *   variants (WK_SIGNATURE only) array of per-path/per-host look overrides.
  *
  * Per-link overrides:
@@ -131,9 +137,16 @@
     // already loaded — keeps every load feeling uniform, never a flash.
     minHold: Math.max(0, parseInt(option("minHold", 1500), 10) || 1500),
     domains: domains,
+    // Wesley's handwriting, in priority order: inline config, then the
+    // centralized data file (https://wesleykamau.com/signature/signatures.js,
+    // a sync script loaded just before this one that sets window.WK_SIGNATURES
+    // — one source of truth every site shares, so new signatures land
+    // everywhere without touching each repo), then the placeholder flourish.
     signatures:
       Array.isArray(user.signatures) && user.signatures.length
         ? user.signatures
+        : Array.isArray(window.WK_SIGNATURES) && window.WK_SIGNATURES.length
+        ? window.WK_SIGNATURES
         : PLACEHOLDER_SIGNATURES,
     // Per-project variants: [{ path|host, name, paper, ink, font, design }].
     variants: Array.isArray(user.variants) ? user.variants : [],
@@ -214,35 +227,44 @@
     return first.replace(/^['"]|['"]$/g, "");
   }
 
-  // One signature is chosen per browsing *session*, not per page — so the mark
-  // stays identical across every hop of a journey (no jarring mid-transition
-  // switch). A fresh browser session (or explicit reset) rolls a new one.
-  var SIG_KEY = "__wk_sig";
-  function pickSignature() {
-    var list = cfg.signatures;
-    if (!list || !list.length) return PLACEHOLDER_SIGNATURES[0];
-    var idx = -1;
+  // A fresh signature is rolled for every page view — each load feels like a
+  // new little autograph (Riley-Walz-style) — but never the one the visitor
+  // just saw: the previous pick is remembered (sessionStorage, and carried
+  // across domains in the #wk<idx> fragment) and excluded, so back-to-back
+  // views always differ. Within a single transition the departing cover keeps
+  // its signature blank and only the arrival writes one, so there's exactly
+  // one mark per moment — nothing to fall out of sync.
+  var SIG_LAST = "__wk_last";
+  function lastSignatureIndex() {
     try {
-      var stored = sessionStorage.getItem(SIG_KEY);
-      if (stored !== null && stored !== "") {
-        var n = parseInt(stored, 10);
-        if (n >= 0) idx = n % list.length;
-      }
+      var v = sessionStorage.getItem(SIG_LAST);
+      if (v !== null && v !== "") return parseInt(v, 10);
     } catch (e) {
       /* storage blocked */
     }
-    if (idx < 0) {
-      // First view of the session: roll one (Riley-Walz-style random doodle),
-      // falling back to the first if Math.random is stubbed (some sandboxes).
-      try {
-        idx = Math.floor(Math.random() * list.length);
-      } catch (e) {
-        idx = 0;
+    return -1;
+  }
+  function pickSignature(record) {
+    var list = cfg.signatures;
+    if (!list || !list.length) return PLACEHOLDER_SIGNATURES[0];
+    var avoid = lastSignatureIndex();
+    if (avoid >= 0) avoid = avoid % list.length;
+    var idx = 0;
+    try {
+      idx = Math.floor(Math.random() * list.length);
+      if (list.length > 1 && idx === avoid) {
+        // Re-roll among the others so repeats never happen back-to-back
+        // (uniform over the remaining marks).
+        idx = (avoid + 1 + Math.floor(Math.random() * (list.length - 1))) % list.length;
       }
+    } catch (e) {
+      idx = avoid >= 0 ? (avoid + 1) % list.length : 0;
+    }
+    if (record) {
       try {
-        sessionStorage.setItem(SIG_KEY, String(idx));
+        sessionStorage.setItem(SIG_LAST, String(idx));
       } catch (e) {
-        /* storage blocked — a per-page roll is the graceful degradation */
+        /* storage blocked — anti-repeat degrades gracefully */
       }
     }
     return list[idx % list.length] || list[0];
@@ -289,13 +311,14 @@
     });
   }
 
-  // A cross-domain hop carries the chosen signature index in the URL fragment
-  // (#wk<idx>) so the destination continues the *same* mark. Seed it before the
+  // A cross-domain hop carries the index of the signature the visitor was just
+  // shown in the URL fragment (#wk<idx>), so the destination — which can't see
+  // the origin's sessionStorage — still avoids repeating it. Seed it before the
   // first pick, then scrub it from the address bar.
   try {
     var hm = /(?:^|[#&?])wk(\d+)/.exec(location.hash || "");
     if (hm) {
-      sessionStorage.setItem(SIG_KEY, String(parseInt(hm[1], 10)));
+      sessionStorage.setItem(SIG_LAST, String(parseInt(hm[1], 10)));
       var clean = (location.hash || "").replace(/(?:^|[#&?])wk\d+/, "");
       if (clean === "#" || clean === "") clean = "";
       if (history.replaceState)
@@ -348,12 +371,52 @@
     : "first";
 
   // ---------------------------------------------------------------- styles
+  // iOS 26: the curtain must be DOCUMENT pixels, never position:fixed. A fixed
+  // opaque sheet covering the viewport at first composite flips Safari's
+  // liquid-glass chrome zones / latches the bands (the fold campaign's core
+  // finding, iOS26.md), and the homepage fold stays broken AFTER the curtain
+  // lifts. So the sheet is position:absolute (document coordinates — it's a
+  // child of <html>) glued to the viewport box by JS (top = scrollY, see
+  // glueViewport), exactly like the site's chrome-zone modal host. 100lvh
+  // covers the largest layout viewport; vh is the fallback unit.
+  // The overlay box itself carries the paper background-color: the iOS 26
+  // zone tint sampler reads "box + background-color" (iOS26.md fact 6c), and
+  // with viewport-fit=cover the box spans under the status bar — inner
+  // children's backgrounds alone left the status zone unsampled (SIG r3).
   var css =
-    "#wk-signature{position:fixed;inset:0;z-index:2147483001;pointer-events:none;" +
+    "#wk-signature{position:absolute;left:0;right:0;top:0;height:100vh;height:100lvh;" +
+    "z-index:2147483001;pointer-events:none;background:var(--wks-paper);" +
     "--wks-paper:" + cfg.paper + ";--wks-ink:" + cfg.ink + ";--wks-sign:var(--wks-ink);" +
     "--wks-reveal:" + T.reveal + "ms;--wks-close:" + T.close + "ms;--wks-fade:" + T.fade + "ms;" +
     "font-family:var(--wks-font," + DEFAULT_FONT + ");" +
     "-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}" +
+    // Zone occupation: paper strips extending BEYOND the viewport edges. iOS 26
+    // renders document pixels past the edges into the liquid-glass chrome zones
+    // (the fold's band recipe, iOS26.md 4b), so during the hold the curtain
+    // occupies the FULL physical screen — status band and pill band included.
+    // They fade with the reveal (zones sample live, so the bands de-occupy in
+    // sync) and are gone for good at teardown. The top strip only has document
+    // pixels to paint when scrolled (exit covers) — at load, y=0 is the
+    // document origin and nothing exists above it (physics); the status zone
+    // then just tints from the curtain's own top row, which matches.
+    "#wk-signature .wks-ext{position:absolute;left:0;right:0;height:220px;" +
+    "background:var(--wks-paper);transition:opacity var(--wks-reveal) ease}" +
+    "#wk-signature .wks-ext-top{top:-220px}#wk-signature .wks-ext-bottom{bottom:-220px}" +
+    "#wk-signature[data-state=out] .wks-ext{opacity:0}" +
+    // Reveal 'up': the strips RIDE the lift (same duration/curve as the
+    // sheet) so the band shows the curtain physically exiting through it —
+    // the top strip follows the sheet up; the bottom strip drops out of the
+    // pill band's sampling range immediately.
+    "#wk-signature[data-reveal=up][data-state=out] .wks-ext{opacity:1;" +
+    "transition:transform var(--wks-reveal) cubic-bezier(.7,0,.2,1)}" +
+    "#wk-signature[data-reveal=up][data-state=out] .wks-ext-top{" +
+    "transform:translateY(calc(-100vh - 240px));transform:translateY(calc(-100lvh - 240px))}" +
+    "#wk-signature[data-reveal=up][data-state=out] .wks-ext-bottom{transform:translateY(340px)}" +
+    // Clear the overlay's own backdrop the moment the reveal starts — the
+    // same-color sheet still covers it (invisible switch), and the page must
+    // not stay hidden behind the overlay box while the sheet lifts. iOS
+    // animates the zone tint hand-back itself.
+    "#wk-signature[data-state=out]{background:transparent}" +
     // The sheet holds two background halves (so 'split' can part them) plus a
     // centered content stage. 'up' moves the whole sheet; 'iris' clips it.
     "#wk-signature .wks-sheet{position:absolute;inset:0;overflow:hidden;" +
@@ -400,7 +463,15 @@
     // ---- reveal: split — barn-door, halves part vertically, type lifts out ----
     "#wk-signature[data-reveal=split][data-state=out] .wks-bg-top{transform:translateY(-101%)}" +
     "#wk-signature[data-reveal=split][data-state=out] .wks-bg-bottom{transform:translateY(101%)}" +
-    "#wk-signature[data-reveal=split][data-state=out] .wks-stage{opacity:0;transform:translateY(-8%) scale(.97)}" +
+    "#wk-signature[data-reveal=split][data-state=out] .wks-stage{opacity:0;transition-delay:90ms}" +
+    // The wordmark rides the split: alternating letters peel up/down with the
+    // parting halves, rippling left-to-right via their entrance delays.
+    "@keyframes wks-peel-up{to{opacity:0;transform:translateY(-140%);filter:blur(5px)}}" +
+    "@keyframes wks-peel-down{to{opacity:0;transform:translateY(140%);filter:blur(5px)}}" +
+    "#wk-signature[data-reveal=split][data-state=out] .wks-ch{" +
+    "animation:wks-peel-up calc(var(--wks-reveal)*.8) cubic-bezier(.6,0,.3,1) both}" +
+    "#wk-signature[data-reveal=split][data-state=out] .wks-ch:nth-child(even){" +
+    "animation-name:wks-peel-down}" +
     "#wk-signature[data-reveal=split][data-mode=close] .wks-bg{transition:transform var(--wks-close) cubic-bezier(.4,0,.2,1)}" +
     "#wk-signature[data-reveal=split][data-mode=close] .wks-bg-top{transform:translateY(-101%)}" +
     "#wk-signature[data-reveal=split][data-mode=close] .wks-bg-bottom{transform:translateY(101%)}" +
@@ -434,10 +505,69 @@
 
   var SVGNS = "http://www.w3.org/2000/svg";
 
+  // TEMP r6 diagnostic ticker (badge readout) — cleared when the badge leaves
+  // the DOM or on destroy.
+  var diagTick = null;
+
+  // The status zone renders a BAND of document pixels from ABOVE the viewport
+  // edge (the fold's top shield extends 80px+ above the edge for exactly this
+  // reason). SIG r6 proved a 1px nudge is useless — one row of teal, 59 rows
+  // of nothing, white fallback. So during the hold, park the scroll at
+  // NUDGE_PX so the zone has a full band of curtain pixels (the 220px top ext
+  // strip) to sample. Invisible: the opaque curtain re-pins via the glue.
+  // Restored to 0 at reveal start, behind the still-covering sheet (the glue
+  // compensates in the same frame, so the sheet doesn't move on screen).
+  var NUDGE_PX = 150;
+  var nudged = false;
+  var nudgeTick = null;
+  // The browser/framework resets scroll to 0 during load (scroll restoration,
+  // hydration) — a single nudge gets undone mid-hold (r7 headless). Re-assert
+  // on a short interval for the (≤5s, fully covered) hold window.
+  function armNudge() {
+    nudgeScroll();
+    if (nudgeTick) clearInterval(nudgeTick);
+    nudgeTick = setInterval(nudgeScroll, 150);
+  }
+  function disarmNudge() {
+    if (nudgeTick) {
+      clearInterval(nudgeTick);
+      nudgeTick = null;
+    }
+  }
+  function nudgeScroll() {
+    try {
+      if ((window.pageYOffset || 0) < NUDGE_PX) {
+        window.scrollTo(0, NUDGE_PX);
+        nudged = (window.pageYOffset || 0) > 0; // took effect (document tall enough)
+        // Re-pin the sheet in the SAME task — waiting for the scroll event
+        // let the compositor render one frame with the sheet 150px off (the
+        // visible mid-load "shift", r7 device round).
+        glueViewport();
+      }
+    } catch (e) {
+      /* best-effort */
+    }
+  }
+  function unnudgeScroll() {
+    try {
+      // Only restore if we nudged and the user hasn't meaningfully scrolled
+      // (they can't while covered — but belt and braces).
+      if (nudged && (window.pageYOffset || 0) <= NUDGE_PX + 2) {
+        window.scrollTo(0, 0);
+        glueViewport();
+      }
+      nudged = false;
+    } catch (e) {
+      /* best-effort */
+    }
+  }
+
   // ------------------------------------------------------------------ DOM
-  function build(entry) {
+  // forClose sheets never show their signature (the arrival writes it), so
+  // their pick isn't recorded as "seen" — only sheets that display a mark are.
+  function build(entry, forClose) {
     var look = resolveLook(entry === undefined ? currentEntry : entry);
-    var sig = pickSignature();
+    var sig = pickSignature(!forClose);
 
     var el = doc.createElement("div");
     el.id = "wk-signature";
@@ -453,6 +583,7 @@
     el._wksWeight = look.weight || 700;
     el._wksName = look.name;
     el._wksSig = sig;
+    el._wksPaper = look.paper;
     if (reduced) el.setAttribute("data-motion", "reduce");
 
     var sheet = doc.createElement("div");
@@ -505,16 +636,476 @@
     sheet.appendChild(bgTop);
     sheet.appendChild(bgBot);
     sheet.appendChild(stage);
+    // Zone-occupation strips (outside the sheet — .wks-sheet clips overflow).
+    var extTop = doc.createElement("div");
+    extTop.className = "wks-ext wks-ext-top";
+    var extBot = doc.createElement("div");
+    extBot.className = "wks-ext wks-ext-bottom";
+    el.appendChild(extTop);
+    el.appendChild(extBot);
     el.appendChild(sheet);
     return el;
   }
 
+  // The script runs in <head>, so the sheet is first appended to <html> —
+  // but iOS 26's chrome-zone sampling reads DOCUMENT (body) pixels, and
+  // non-body children of <html> appear to be outside its world (SIG r3: teal
+  // curtain, white status zone). Adopt the sheet into <body> the moment body
+  // exists — absolute positioning resolves against the same document
+  // coordinates either way, so nothing moves visually. (React 19 hydration
+  // skips unknown body children, so this is hydration-safe.)
+  function adoptIntoBody(el) {
+    if (doc.body) {
+      if (el.parentNode !== doc.body) doc.body.appendChild(el);
+      return;
+    }
+    var mo = new MutationObserver(function () {
+      if (!doc.body) return;
+      mo.disconnect();
+      // Only adopt if the sheet is still mounted and still on <html>.
+      if (el.parentNode === doc.documentElement) doc.body.appendChild(el);
+    });
+    mo.observe(doc.documentElement, { childList: true });
+  }
+
+  // Document-glue: pin the absolute sheet to the current viewport box. Runs at
+  // mount and on scroll / viewport resize while a sheet exists, so the curtain
+  // stays covering the screen even if iOS restores a scroll position or the
+  // bars transition mid-hold. (Scroll during the brief hold is rare — the
+  // page is covered — but restoration on reload is not.)
+  // BAND RIDER — the "native exit" element. The status band does NOT sample
+  // content inside the max-z curtain overlay (r11 frame 0545: band went white
+  // under an opaque teal strip) — it samples the CANVAS plus plain low-z
+  // background boxes like the fold's device-proven shield strips. This rider
+  // replicates that exact recipe: a plain absolute BODY child, z-index 1,
+  // background paper, glued to the band window ABOVE the viewport edge (zero
+  // in-viewport footprint). At reveal it rides up with the sheet's own curve,
+  // so the band renders the paper physically sliding out the top of the
+  // screen.
+  // (r14's "band rider" removed in r15: the band is a diffuse blur and can't
+  // render a sweeping edge — a solid surface in the window just HOLDS the
+  // band's color against the canvas fade, then vacates near-instantly at the
+  // curve's end: the device-observed "consumed, stays blue, pops" (0553-55).
+  // The canvas fade is the band's one smooth channel.)
+  function removeRider() {
+    var r = doc.getElementById("wk-signature-band");
+    if (r && r.parentNode) r.parentNode.removeChild(r);
+  }
+
+  function glueViewport() {
+    var el = doc.getElementById("wk-signature");
+    if (!el) return;
+    // While parked (nudge armed): correct browser scroll-resets in the SAME
+    // scroll event they happen, not a ticker-interval later — kills the brief
+    // white-band flicker a mid-hold reset could cause.
+    if (nudgeTick && (window.pageYOffset || 0) < NUDGE_PX) {
+      try {
+        window.scrollTo(0, NUDGE_PX);
+      } catch (e) {
+        /* best-effort */
+      }
+    }
+    var y = window.pageYOffset || doc.documentElement.scrollTop || 0;
+    el.style.top = y + "px";
+  }
+  var glueArmed = false;
+  function armGlue() {
+    glueViewport();
+    if (glueArmed) return;
+    glueArmed = true;
+    window.addEventListener("scroll", glueViewport, { passive: true });
+    if (window.visualViewport)
+      window.visualViewport.addEventListener("resize", glueViewport);
+  }
+  function disarmGlue() {
+    if (!glueArmed) return;
+    glueArmed = false;
+    window.removeEventListener("scroll", glueViewport);
+    if (window.visualViewport)
+      window.visualViewport.removeEventListener("resize", glueViewport);
+  }
+
+  // Chrome (status-band) occupation. The bottom band samples the .wks-ext
+  // document pixels below the viewport edge, but at load y=0 IS the document
+  // origin — there are no document pixels above it, so the STATUS zone falls
+  // back to the page's <meta name="theme-color"> / root background (this site
+  // ships white/black media-gated metas — the observed white top band). While
+  // the curtain holds, point both at the curtain paper; restore on reveal so
+  // the band hands back with the sheet. Background-color writes are NOT
+  // document locks (overflow/position are) — safe under the gate law.
+  // Perceived luminance → is this paper dark? Drives the color-scheme swap
+  // (the one signal iOS 26's neutral status glass actually follows at page
+  // top, where no document pixels exist to sample — SIG r3/r4 proved
+  // theme-color, root background, and box paint are all ignored there).
+  function isDarkColor(color) {
+    var probe = doc.createElement("div");
+    probe.style.color = color;
+    probe.style.display = "none";
+    (doc.body || doc.documentElement).appendChild(probe);
+    var rgb = getComputedStyle(probe).color.match(/\d+(\.\d+)?/g) || [];
+    probe.parentNode.removeChild(probe);
+    if (rgb.length < 3) return true;
+    var lum =
+      0.2126 * Number(rgb[0]) + 0.7152 * Number(rgb[1]) + 0.0722 * Number(rgb[2]);
+    return lum < 140;
+  }
+
+  var savedChrome = null;
+  function occupyChrome(host, park) {
+    if (savedChrome) restoreChrome();
+    var paper = host._wksPaper;
+    savedChrome = { host: host, paper: paper, park: !!park, metas: [], created: null, styleEl: null };
+    // Root color-scheme + background via a STYLESHEET with !important, not
+    // inline styles: host theme systems (e.g. next-themes) rewrite
+    // html.style.colorScheme on every provider render — an unwinnable inline
+    // write-battle mid-hold (observed flapping, SIG r5 headless). A stylesheet
+    // !important outranks any inline write, ends the battle without observers
+    // or timers, and removal restores the host's own value untouched.
+    // CRITICAL: the <style> lives INSIDE the curtain element, not <head> —
+    // React/Next head reconciliation deletes foreign head nodes mid-hydration
+    // (probed: the style vanished mid-hold from <head>). A <style> applies
+    // document-wide from anywhere in the DOM, and nothing owns the curtain.
+    var scheme = isDarkColor(paper) ? "dark" : "light";
+    // TWO stylesheets, restored at different moments: LOOK (color-scheme +
+    // canvas color — handed back at reveal START so the band's backdrop is
+    // already the page's natural state while the sheet/strip slide out over
+    // it) and PARK (the margin — handed back atomically with scroll-zero at
+    // teardown so content never shifts).
+    var look = doc.createElement("style");
+    look.id = "wk-signature-look";
+    look.textContent =
+      ":root{color-scheme:" + scheme + " !important;" +
+      "background-color:" + paper + " !important}";
+    host.appendChild(look);
+    savedChrome.lookEl = look;
+    if (park) {
+      var parkSt = doc.createElement("style");
+      parkSt.id = "wk-signature-park";
+      // While the scroll sits at NUDGE_PX (see nudgeScroll), a matching top
+      // margin keeps the PAGE content rendering at its natural screen
+      // position — neither the park nor its removal ever shifts anything.
+      parkSt.textContent =
+        ":root{margin-top:" + NUDGE_PX + "px !important}";
+      host.appendChild(parkSt);
+      savedChrome.parkEl = parkSt;
+    }
+    var metas = doc.querySelectorAll('meta[name="theme-color"]');
+    if (metas.length) {
+      for (var i = 0; i < metas.length; i++) {
+        savedChrome.metas.push({
+          el: metas[i],
+          content: metas[i].getAttribute("content"),
+        });
+        metas[i].setAttribute("content", paper);
+      }
+    } else {
+      var m = doc.createElement("meta");
+      m.setAttribute("name", "theme-color");
+      m.setAttribute("content", paper);
+      (doc.head || doc.documentElement).appendChild(m);
+      savedChrome.created = m;
+    }
+  }
+  // Hand back the LOOK only (color-scheme, canvas color, theme-color metas):
+  // called at reveal START so the band behind the departing sheet/strip is
+  // already the page's own — continuous document pixels, no discrete iOS
+  // tint animation at any point. The park (margin+scroll) stays.
+  function restoreLook() {
+    if (!savedChrome) return;
+    doc.documentElement.style.removeProperty("--wks-band");
+    if (savedChrome.lookEl && savedChrome.lookEl.parentNode) {
+      savedChrome.lookEl.parentNode.removeChild(savedChrome.lookEl);
+    }
+    savedChrome.lookEl = null;
+    for (var i = 0; i < savedChrome.metas.length; i++) {
+      var m = savedChrome.metas[i];
+      if (m.content === null) m.el.removeAttribute("content");
+      else m.el.setAttribute("content", m.content);
+    }
+    savedChrome.metas = [];
+    if (savedChrome.created && savedChrome.created.parentNode) {
+      savedChrome.created.parentNode.removeChild(savedChrome.created);
+    }
+    savedChrome.created = null;
+  }
+
+  // Animate the LOOK to the page's natural state over `dur` ms (the lift):
+  // rewrite the look stylesheet with the page's own body background +
+  // matching color-scheme and a background-color transition — the change
+  // animates from the current paper value. theme-color metas restore now
+  // (they don't drive the parked band).
+  function fadeLookToNatural(dur, onDone) {
+    if (!savedChrome || !savedChrome.lookEl) {
+      if (onDone) onDone();
+      return;
+    }
+    var naturalBg = "#ffffff";
+    try {
+      var probe = doc.body ? getComputedStyle(doc.body).backgroundColor : "";
+      if (probe && probe !== "rgba(0, 0, 0, 0)" && probe !== "transparent") {
+        naturalBg = probe;
+      } else if (doc.body) {
+        // Transparent body: fall back to what the html would be without us —
+        // approximated by the page's color-scheme preference.
+        naturalBg = isDarkColor(cfg.ink) ? "#ffffff" : "#000000";
+      }
+    } catch (e) {
+      /* keep #ffffff */
+    }
+    var naturalScheme = isDarkColor(naturalBg) ? "dark" : "light";
+    // CLOSED-LOOP band sync (r18): every open-loop timer/CSS-transition round
+    // desynced somewhere (early = band flips beside a still-teal half; late =
+    // lingers; matched-curve = pops). Instead, slave the band color to the
+    // sheet half's ACTUAL rendered transform each frame: the canvas (which
+    // the band tracks near-instantly while parked) is driven through a CSS
+    // var, weighted to hold paper while the half is large and complete
+    // exactly as it finishes leaving. The band can never disagree with the
+    // pixels touching it — including through system hitches, because we read
+    // the real animation, not a guess of it.
+    function toRgb(color) {
+      var pr = doc.createElement("div");
+      pr.style.color = color;
+      pr.style.display = "none";
+      (doc.body || doc.documentElement).appendChild(pr);
+      var m = getComputedStyle(pr).color.match(/\d+(\.\d+)?/g) || [255, 255, 255];
+      pr.parentNode.removeChild(pr);
+      return [Number(m[0]) || 0, Number(m[1]) || 0, Number(m[2]) || 0];
+    }
+    var from = toRgb(savedChrome.paper);
+    var to = toRgb(naturalBg);
+    savedChrome.lookEl.textContent =
+      ":root{color-scheme:" + naturalScheme + " !important;" +
+      "background-color:var(--wks-band," + savedChrome.paper + ") !important}";
+    var half =
+      doc.querySelector("#wk-signature .wks-bg-top") ||
+      doc.querySelector("#wk-signature .wks-sheet");
+    var H = 1;
+    try {
+      H = Math.max(1, half.getBoundingClientRect().height);
+    } catch (e) {
+      /* keep 1 */
+    }
+    var t0 = performance.now();
+    function frame() {
+      if (!savedChrome) {
+        doc.documentElement.style.removeProperty("--wks-band");
+        return;
+      }
+      var p;
+      try {
+        var tf = getComputedStyle(half).transform;
+        if (tf && tf !== "none") {
+          var parts = tf.split(",");
+          var ty = parseFloat(parts[parts.length - 1]) || 0;
+          p = Math.min(1, Math.max(0, -ty / H));
+        } else {
+          p = Math.min(1, (performance.now() - t0) / Math.max(1, dur));
+        }
+      } catch (e) {
+        p = Math.min(1, (performance.now() - t0) / Math.max(1, dur));
+      }
+      // Bands do NOTHING until the half's tail reaches them (owner spec):
+      // frozen at pure paper until ~72% of the exit (the remaining piece is
+      // then right at the band), then a fast smoothstep resolve that
+      // completes exactly at consumption.
+      var START = 0.76;
+      var END = 0.97; // finish a hair early: absorbs iOS's frame of smoothing
+      var w = p <= START ? 0 : Math.min(1, (p - START) / (END - START));
+      w = w * w * (3 - 2 * w);
+      doc.documentElement.style.setProperty(
+        "--wks-band",
+        "rgb(" +
+          Math.round(from[0] + (to[0] - from[0]) * w) + "," +
+          Math.round(from[1] + (to[1] - from[1]) * w) + "," +
+          Math.round(from[2] + (to[2] - from[2]) * w) + ")"
+      );
+      if (p < 1) {
+        requestAnimationFrame(frame);
+      } else {
+        doc.documentElement.style.setProperty("--wks-band", naturalBg);
+        // The exit measurably finished — give iOS its smoothing frame, then
+        // report completion (a timer-independent finalize path: rAF provably
+        // works here, since this loop just ran on it).
+        if (onDone) {
+          requestAnimationFrame(function () {
+            requestAnimationFrame(onDone);
+          });
+        }
+      }
+    }
+    requestAnimationFrame(frame);
+    for (var i = 0; i < savedChrome.metas.length; i++) {
+      var m = savedChrome.metas[i];
+      if (m.content === null) m.el.removeAttribute("content");
+      else m.el.setAttribute("content", m.content);
+    }
+    savedChrome.metas = [];
+    if (savedChrome.created && savedChrome.created.parentNode) {
+      savedChrome.created.parentNode.removeChild(savedChrome.created);
+    }
+    savedChrome.created = null;
+  }
+
+  // ------------------------------------------------------- scroll lock
+  // While a sheet covers the page, the visitor must not be able to scroll
+  // the document underneath (a covered page drifting mid-transition). The
+  // sheet itself must stay pointer-events:none and html/body overflow must
+  // never be touched (both locked by the iOS 26 chrome-zone contract, and
+  // the park REQUIRES document scrollability) — so instead, swallow scroll
+  // *intent* at the window: wheel, touch pans, and scroll keys. Programmatic
+  // scrolls (the park/glue) are unaffected, and armNudge still re-asserts
+  // the park against anything that slips through.
+  var lockArmed = false;
+  var KEY_SCROLL = { 32: 1, 33: 1, 34: 1, 35: 1, 36: 1, 37: 1, 38: 1, 39: 1, 40: 1 };
+  function preventScrollIntent(e) {
+    if (e.cancelable) e.preventDefault();
+  }
+  function preventKeyScroll(e) {
+    var t = e.target;
+    var editable =
+      t &&
+      (t.isContentEditable ||
+        t.nodeName === "INPUT" ||
+        t.nodeName === "TEXTAREA" ||
+        t.nodeName === "SELECT");
+    if (KEY_SCROLL[e.keyCode] && !editable) e.preventDefault();
+  }
+  function armScrollLock() {
+    if (lockArmed) return;
+    lockArmed = true;
+    window.addEventListener("wheel", preventScrollIntent, { passive: false });
+    window.addEventListener("touchmove", preventScrollIntent, { passive: false });
+    window.addEventListener("keydown", preventKeyScroll, true);
+  }
+  function disarmScrollLock() {
+    if (!lockArmed) return;
+    lockArmed = false;
+    window.removeEventListener("wheel", preventScrollIntent);
+    window.removeEventListener("touchmove", preventScrollIntent);
+    window.removeEventListener("keydown", preventKeyScroll, true);
+  }
+
+  function restoreChrome() {
+    disarmScrollLock();
+    if (!savedChrome) return;
+    var parked = savedChrome.park;
+    restoreLook();
+    if (savedChrome.parkEl && savedChrome.parkEl.parentNode) {
+      savedChrome.parkEl.parentNode.removeChild(savedChrome.parkEl);
+    }
+    // Atomic un-park: margin removal (above) and scroll-zero in ONE task —
+    // the content occupies identical screen pixels before and after, so the
+    // hand-back is invisible. Runs at TEARDOWN (after the sheet has fully
+    // lifted), never at reveal start (that put the white band back mid-lift,
+    // r7 device round).
+    if (parked) {
+      disarmNudge();
+      unnudgeScroll();
+    }
+    removeRider();
+    savedChrome = null;
+  }
+  // Host pages parse their own <meta name="theme-color"> tags AFTER this
+  // script when it runs synchronously in <head> — re-occupy at DOM-ready so
+  // late metas are captured (and correctly restored) on every host site.
+  doc.addEventListener("DOMContentLoaded", function () {
+    if (savedChrome) {
+      var h = savedChrome.host;
+      var park = savedChrome.park;
+      restoreChrome();
+      if (h && h.isConnected) occupyChrome(h, park);
+      if (park) armNudge();
+      // restoreChrome() above released the scroll lock as part of its
+      // hand-back; the sheet is still covering, so re-assert it.
+      armScrollLock();
+    }
+  });
+
   function destroyAll() {
+    // Void any in-flight reveal finalize: a stale timer from a superseded
+    // reveal must never tear down a NEWER intro's chrome occupation.
+    pendingFinalize = null;
+    disarmWatchdog();
+    disarmGlue();
+    restoreChrome();
+    disarmNudge();
+    unnudgeScroll();
+    if (diagTick) {
+      clearInterval(diagTick);
+      diagTick = null;
+    }
     var el;
     while ((el = doc.getElementById("wk-signature"))) {
       el.parentNode.removeChild(el);
     }
   }
+
+  // ------------------------------------------------- hand-back invariants
+  // The chrome occupation (paper metas, :root canvas, park) must NEVER
+  // outlive the sheet. The primary teardown paths handle the designed flows;
+  // these guards cover the hostile ones — a host framework eating the adopted
+  // sheet mid-lifecycle (hydration, route error boundaries, dev overlays) or
+  // the platform freezing/killing the finalize timer — which on device left
+  // the chrome band stuck at paper long after the curtain was gone.
+  var watchdog = null;
+
+  function recoverEaten(el) {
+    // The sheet vanished without us: hand everything back and, if the intro
+    // never got to signal, release the page's gated animations now.
+    var wasIntro = el === overlay;
+    var mode = el && el.getAttribute ? el.getAttribute("data-entry") : null;
+    var name = el ? el._wksName : null;
+    pendingFinalize = null;
+    overlay = null;
+    closeEl = null;
+    closing = false;
+    destroyAll();
+    if (wasIntro && !revealedOnce) {
+      revealed = true;
+      signalReveal(mode, name);
+    }
+  }
+
+  function watchdogTick() {
+    var active = overlay || closeEl;
+    if (!active) {
+      disarmWatchdog();
+      // Nothing on screen, nothing pending, but chrome still occupied and no
+      // navigation in flight → the finalize path died. Restore now.
+      if (savedChrome && !closing && !pendingFinalize) restoreChrome();
+      return;
+    }
+    if (!active.isConnected) recoverEaten(active);
+  }
+
+  function armWatchdog() {
+    if (watchdog) return;
+    watchdog = setInterval(watchdogTick, 700);
+  }
+
+  function disarmWatchdog() {
+    if (watchdog) {
+      clearInterval(watchdog);
+      watchdog = null;
+    }
+  }
+
+  // Event-driven sweep for the same stranded state (covers pages where the
+  // watchdog already wound down): any occupation with no connected sheet and
+  // no navigation in flight is an orphan — restore it.
+  function sweepStranded() {
+    if (!savedChrome || closing) return;
+    var active = overlay || closeEl;
+    if (!active || !active.isConnected) {
+      if (active) {
+        recoverEaten(active);
+      } else if (!pendingFinalize) {
+        restoreChrome();
+      }
+    }
+  }
+  doc.addEventListener("visibilitychange", sweepStranded);
+  window.addEventListener("pagehide", sweepStranded);
 
   /**
    * Blank a sheet's signature (hide the strokes) — used on the departing cover
@@ -690,7 +1281,7 @@
         // its pen-lift. Near-constant speed through the body of each stroke.
         var ease =
           j === 0 ? "cubic-bezier(.42,0,.32,1)" : "cubic-bezier(.25,.02,.32,1)";
-        plan.push({ waapi: false, dur: dj, delay: acc, ease: ease });
+        plan.push({ waapi: false, dur: dj, delay: acc, ease: ease, len: lens[j] });
         totalMs = acc + dj;
         acc += dj + PEN_LIFT * scale; // pen lift before the next stroke
       }
@@ -701,9 +1292,18 @@
     // task never runs — the browser just renders the end state, and the mark
     // "snaps on" complete. Waiting two frames lets the hidden initial state
     // paint first, so the draw actually animates from empty.
+    // The motion runs on the Web Animations API for BOTH paths — captured
+    // timing and the synthesized fallback. This is deliberate, not a nicety:
+    // host pages can momentarily inject `* { transition: none !important }`
+    // (e.g. next-themes' disableTransitionOnChange during hydration), which
+    // cancels every running CSS transition and snaps the strokes to fully
+    // drawn — the signature "just appears". WAAPI animations are immune to
+    // that. CSS transitions remain only as a last-resort for browsers with no
+    // Element.animate.
     function begin() {
       for (var p = 0; p < paths.length; p++) {
         var pl = plan[p];
+        var canAnimate = typeof paths[p].animate === "function";
         if (pl.waapi) {
           try {
             paths[p].animate(pl.frames, {
@@ -712,6 +1312,23 @@
               easing: "linear",
               fill: "both",
             });
+          } catch (e) {
+            paths[p].style.strokeDashoffset = "0"; // never leave it hidden
+          }
+        } else if (canAnimate) {
+          try {
+            paths[p].animate(
+              [
+                { strokeDashoffset: String(pl.len) },
+                { strokeDashoffset: "0" },
+              ],
+              {
+                duration: pl.dur,
+                delay: pl.delay,
+                easing: pl.ease,
+                fill: "both",
+              }
+            );
           } catch (e) {
             paths[p].style.strokeDashoffset = "0"; // never leave it hidden
           }
@@ -815,6 +1432,15 @@
     }
   }
 
+  // The active reveal's teardown step. Kept in module scope so EVERY
+  // completion signal can drive it — the linger timer, the closed-loop band
+  // fade's final frame, the watchdog, and the stranded-state sweeps. The
+  // hand-back being a single setTimeout was a single point of failure: if the
+  // host ever ate that timer (or the sheet itself), the paper metas/canvas
+  // stayed applied forever — photographed on device as the chrome band
+  // stuck at teal long after the curtain was gone.
+  var pendingFinalize = null;
+
   function reveal() {
     if (revealed || !overlay) return;
     revealed = true;
@@ -822,15 +1448,40 @@
     var name = overlay._wksName;
     overlay.removeAttribute("data-waiting");
     overlay.setAttribute("data-state", "out");
+    // Zones stay OCCUPIED through the whole lift (restoring at reveal start
+    // put the white band back while the sheet was still on screen — r7). The
+    // atomic hand-back happens at teardown, in finalize below.
     var linger = (reduced ? T.fade : T.reveal) + 60;
-    setTimeout(function () {
+    function finalize() {
+      // Idempotent, and identity-checked so a stale timer from a superseded
+      // reveal can never tear down a newer intro's chrome occupation.
+      if (pendingFinalize !== finalize) return;
+      pendingFinalize = null;
+      disarmWatchdog();
+      restoreChrome();
       if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
       overlay = null;
       // Signal only once the reveal animation has fully finished — the page
       // is now unobstructed — so gated entrance animations start clean, with
       // the reveal duration as a built-in buffer.
       signalReveal(mode, name);
-    }, linger);
+    }
+    pendingFinalize = finalize;
+    // The band is a diffuse tint, not a window — ANY instant change to its
+    // source pops visibly (r11 device frames: instant white at reveal start,
+    // blue re-tint at top, teardown pop). The only seamless exit: ANIMATE the
+    // canvas from paper to the page's own background over the same duration
+    // as the lift, while still parked (0545 proved the band tracks the parked
+    // canvas immediately). The band then dissolves in sync with the sheet; at
+    // teardown the override already equals the natural color, so removing it
+    // changes nothing. Strips keep riding the lift for near-edge continuity.
+    // Its rAF loop doubles as a timer-independent finalize trigger: when the
+    // exit measurably completes, teardown runs even if the timeout below was
+    // frozen or killed.
+    fadeLookToNatural(reduced ? T.fade : T.reveal, function () {
+      if (pendingFinalize) pendingFinalize();
+    });
+    setTimeout(finalize, linger);
   }
 
   function startIntro(mode, entry) {
@@ -839,8 +1490,23 @@
     overlay = build(entry);
     overlay.setAttribute("data-entry", mode);
     // Appending to <html> works before <body> exists — this script runs
-    // synchronously in <head>, pre-first-paint.
+    // synchronously in <head>, pre-first-paint. Glue pins the absolute sheet
+    // to the viewport box (see glueViewport — the iOS 26 no-fixed rule).
     doc.documentElement.appendChild(overlay);
+    adoptIntoBody(overlay);
+    armGlue();
+    occupyChrome(overlay, true);
+    armNudge();
+    armWatchdog();
+    armScrollLock();
+    // Fit the wordmark immediately with whatever face is available — arrival
+    // modes show it from the very first frame, and a late first fit would read
+    // as a size jump. whenFontReady re-fits with the real face's metrics.
+    try {
+      fitMark(overlay);
+    } catch (e) {
+      /* pre-layout environments — the font-ready fit still runs */
+    }
 
     var holdMs = holdFor(mode);
     var held = false;
@@ -939,12 +1605,26 @@
       }
     }
 
-    var el = build(chosen);
+    var el = build(chosen, true);
     el.setAttribute("data-mode", "close");
     doc.documentElement.appendChild(el);
-    // Navigating away: the destination writes the mark fresh, so keep this
-    // cover's signature blank (no completed-then-empty flash across the load).
-    if (url) hideSignatureMark(el);
+    adoptIntoBody(el);
+    armGlue();
+    // Covers-in for an exit: occupy in the DESTINATION's paper and stay
+    // occupied through the unload — the arriving page's curtain re-occupies
+    // seamlessly in the same color.
+    occupyChrome(el);
+    armScrollLock();
+    // A closing cover never shows the signature: it can't *write* it in the
+    // ~0.3s slide, and a mark that just appears fully-formed is exactly the
+    // instantaneous feel this design forbids. The next intro (the arrival, or
+    // a settle's replay) writes it properly instead.
+    hideSignatureMark(el);
+    try {
+      fitMark(el); // immediate approximate fit; re-fit below with the real face
+    } catch (e) {
+      /* pre-layout environments */
+    }
 
     // Render the destination wordmark in its own (inlined) font, fitted.
     whenFontReady(el, function () {
@@ -962,8 +1642,9 @@
     // Hand the journey to the destination so it continues as one move rather
     // than replaying the whole intro: same-origin gets a short-lived token in
     // sessionStorage ("continue" mode); a cross-domain owned hop can't share
-    // storage, so the chosen signature index rides along in the URL fragment
-    // (#wk<idx>) and the referrer already flags it as a "handoff".
+    // storage, so the index of the signature the visitor was just shown rides
+    // along in the URL fragment (#wk<idx>) — the arrival excludes it from its
+    // fresh pick, so back-to-back marks always differ even across domains.
     var navUrl = url;
     if (url) {
       try {
@@ -971,9 +1652,9 @@
         if (dest.origin === location.origin) {
           sessionStorage.setItem("__wk_cont", String(Date.now()));
         } else if (isOwned(dest.hostname) && !dest.hash) {
-          var sigIdx = sessionStorage.getItem(SIG_KEY);
-          if (sigIdx !== null && sigIdx !== "") {
-            dest.hash = "wk" + parseInt(sigIdx, 10);
+          var lastIdx = lastSignatureIndex();
+          if (lastIdx >= 0) {
+            dest.hash = "wk" + lastIdx;
             navUrl = dest.href;
           }
         }
@@ -1001,6 +1682,7 @@
       // comes.
       closing = false;
       closeEl = el;
+      armWatchdog();
       setTimeout(function () {
         if (el === closeEl && el.parentNode) settle();
       }, settled + T.reopenSafety);
@@ -1023,6 +1705,7 @@
   function releaseSheet(el) {
     el.removeAttribute("data-mode");
     el.setAttribute("data-state", "out");
+    restoreChrome();
     setTimeout(function () {
       if (el.parentNode) el.parentNode.removeChild(el);
     }, T.reveal + 60);
@@ -1065,7 +1748,7 @@
   window.addEventListener("pageshow", onPageShow);
 
   var api = {
-    version: "3.4.0",
+    version: "3.6.2",
     config: cfg,
     /** Animation timings (ms) for orchestrating SPA transitions. */
     timings: { close: T.close, reveal: T.reveal, fade: T.fade },
@@ -1145,6 +1828,8 @@
     _teardown: function () {
       doc.removeEventListener("click", onClick);
       window.removeEventListener("pageshow", onPageShow);
+      doc.removeEventListener("visibilitychange", sweepStranded);
+      window.removeEventListener("pagehide", sweepStranded);
       api.destroy();
       if (window.__wkSignature === api) window.__wkSignature = undefined;
     },
